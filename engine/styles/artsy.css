@@ -1,0 +1,51 @@
+:root {
+  --bg-dark: #0c0618;
+  --bg-mid: #1b0f37;
+  --ink: #f7efff;
+  --accent: #f4abff;
+  --accent-soft: #86f8ff;
+}
+
+.slidev-layout {
+  background:
+    radial-gradient(80rem 42rem at 92% -8%, rgba(134, 248, 255, 0.16), transparent 58%),
+    radial-gradient(55rem 30rem at -10% 110%, rgba(244, 171, 255, 0.2), transparent 48%),
+    linear-gradient(132deg, var(--bg-dark), var(--bg-mid) 56%, #05030a);
+  color: var(--ink);
+}
+
+h1,
+h2,
+h3 {
+  letter-spacing: 0.01em;
+  text-wrap: balance;
+}
+
+h1 {
+  text-shadow: 0 0 24px rgba(244, 171, 255, 0.2);
+}
+
+a {
+  color: var(--accent-soft);
+}
+
+.hero-subtitle {
+  margin-top: 0.4rem;
+  color: rgba(247, 239, 255, 0.9);
+  font-size: 1.1rem;
+}
+
+.pill-link {
+  display: inline-block;
+  margin-top: 0.5rem;
+  padding: 0.4rem 0.8rem;
+  border-radius: 999px;
+  border: 1px solid rgba(244, 171, 255, 0.45);
+  color: var(--ink);
+  text-decoration: none;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.25);
+}
+
+.pill-link:hover {
+  border-color: var(--accent-soft);
+}

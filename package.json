@@ -1,0 +1,19 @@
+{
+  "name": "presentation-engine",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "new:presentation": "node scripts/new-presentation.mjs",
+    "dev": "node scripts/slidev-dev.mjs",
+    "build": "node scripts/slidev-build.mjs",
+    "build:all": "node scripts/slidev-build-all.mjs"
+  },
+  "devDependencies": {
+    "@slidev/cli": "^52.1.0",
+    "minimist": "^1.2.8"
+  },
+  "dependencies": {
+    "@slidev/theme-default": "^0.25.0"
+  }
+}
