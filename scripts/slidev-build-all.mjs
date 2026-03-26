@@ -25,20 +25,27 @@ for (const deck of decks) {
   }
 }
 
-const indexHtml = renderIndex(decks);
+const deckCards = decks.map((slug) => readDeckCard(slug));
+const feedbackConfig = readFeedbackConfig();
+const indexHtml = renderIndex(deckCards, feedbackConfig);
 const indexPath = path.join(ROOT, "dist", "index.html");
 fs.mkdirSync(path.dirname(indexPath), { recursive: true });
 fs.writeFileSync(indexPath, indexHtml, "utf8");
 console.log("\nGenerated dist/index.html");
 
-function renderIndex(deckSlugs) {
-  const list = deckSlugs
+function renderIndex(cards, feedback) {
+  const list = cards
     .map(
-      (slug, idx) => `<a class="card" href="./${slug}/">
+      (card, idx) => `<article class="card">
           <span class="chip">#${String(idx + 1).padStart(2, "0")}</span>
-          <h2>${humanize(slug)}</h2>
-          <p>Open deck</p>
-        </a>`
+          <h2>${escapeHtml(card.title)}</h2>
+          <p class="meta">${escapeHtml(card.presentedAt || "Date TBD")} · ${escapeHtml(card.presentedWhere || "Location TBD")}</p>
+          <p class="meta">${escapeHtml(card.occasion || "Occasion TBD")}</p>
+          <div class="actions">
+            <a class="btn" href="./${card.slug}/">Open</a>
+            <a class="btn subtle" href="${buildFeedbackUrl(card, feedback)}" target="_blank" rel="noopener noreferrer">Add feedback</a>
+          </div>
+        </article>`
     )
     .join("\n");
 
@@ -96,7 +103,6 @@ function renderIndex(deckSlugs) {
         border: 1px solid #ffffff2e;
         border-radius: 20px;
         padding: 1rem 1rem 1.1rem;
-        text-decoration: none;
         color: var(--ink);
         backdrop-filter: blur(7px);
         transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease;
@@ -117,10 +123,31 @@ function renderIndex(deckSlugs) {
         font-family: "Cormorant Garamond", serif;
         font-size: 1.6rem;
       }
-      p {
-        margin: 0;
+      .meta {
+        margin: 0.15rem 0 0;
         color: var(--soft);
         font-size: .92rem;
+      }
+      .actions {
+        margin-top: 0.9rem;
+        display: flex;
+        gap: 0.5rem;
+        flex-wrap: wrap;
+      }
+      .btn {
+        display: inline-block;
+        text-decoration: none;
+        color: var(--ink);
+        border: 1px solid #ffffff47;
+        border-radius: 999px;
+        padding: 0.36rem 0.72rem;
+        font-size: 0.86rem;
+      }
+      .btn:hover {
+        border-color: #ffffff99;
+      }
+      .btn.subtle {
+        color: var(--glow);
       }
     </style>
   </head>
@@ -136,9 +163,80 @@ ${list}
 </html>`;
 }
 
+function readDeckCard(slug) {
+  const fallback = {
+    slug,
+    title: humanize(slug),
+    titleShort: slug,
+    presentedAt: "",
+    presentedWhere: "",
+    occasion: ""
+  };
+  const configPath = path.join(ROOT, "presentations", slug, "presentation.config.json");
+  if (!fs.existsSync(configPath)) {
+    return fallback;
+  }
+
+  try {
+    const parsed = JSON.parse(fs.readFileSync(configPath, "utf8"));
+    return {
+      slug,
+      title: parsed.title || fallback.title,
+      titleShort: parsed.titleShort || slug,
+      presentedAt: parsed.presentedAt || "",
+      presentedWhere: parsed.presentedWhere || "",
+      occasion: parsed.occasion || ""
+    };
+  } catch {
+    return fallback;
+  }
+}
+
+function readFeedbackConfig() {
+  const configPath = path.join(ROOT, "engine", "feedback.config.json");
+  const fallback = {
+    feedbackFormUrl: "https://tally.so/r/REPLACE_WITH_YOUR_FORM",
+    feedbackFieldKey: "presentation"
+  };
+  if (!fs.existsSync(configPath)) {
+    return fallback;
+  }
+
+  try {
+    const parsed = JSON.parse(fs.readFileSync(configPath, "utf8"));
+    return {
+      feedbackFormUrl: parsed.feedbackFormUrl || fallback.feedbackFormUrl,
+      feedbackFieldKey: parsed.feedbackFieldKey || fallback.feedbackFieldKey
+    };
+  } catch {
+    return fallback;
+  }
+}
+
+function buildFeedbackUrl(card, feedback) {
+  const formBase = String(feedback.feedbackFormUrl || "").trim();
+  if (!formBase) {
+    return "#";
+  }
+  const separator = formBase.includes("?") ? "&" : "?";
+  const key = encodeURIComponent(feedback.feedbackFieldKey || "presentation");
+  const value = encodeURIComponent(card.titleShort || card.slug);
+  return `${formBase}${separator}${key}=${value}`;
+}
+
+function escapeHtml(value) {
+  return String(value)
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
+}
+
 function humanize(slug) {
-  return slug
+  return String(slug)
     .split("-")
+    .filter(Boolean)
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(" ");
 }

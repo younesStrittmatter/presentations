@@ -1,0 +1,30 @@
+name: Presentation Feedback
+description: Share feedback on a presentation
+title: "Feedback - <presentation> - <submission-date>"
+labels: ["feedback"]
+body:
+  - type: dropdown
+    id: rating
+    attributes:
+      label: Rating
+      description: Overall clarity and value
+      options:
+        - "5 - excellent"
+        - "4 - good"
+        - "3 - okay"
+        - "2 - confusing"
+        - "1 - poor"
+    validations:
+      required: true
+
+  - type: textarea
+    id: comments_suggestions
+    attributes:
+      label: Comments / Suggestions
+      placeholder: Share any comments or suggestions.
+    validations:
+      required: true
+
+  - type: markdown
+    attributes:
+      value: "Thank you for helping me improve as a teacher and presenter."

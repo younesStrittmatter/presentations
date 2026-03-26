@@ -35,6 +35,20 @@ a {
   font-size: 1.1rem;
 }
 
+.hero-meta {
+  margin-top: 0.7rem;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.45rem;
+  align-items: center;
+  color: rgba(247, 239, 255, 0.78);
+  font-size: 0.92rem;
+}
+
+.hero-meta-divider {
+  opacity: 0.6;
+}
+
 .pill-link {
   display: inline-block;
   margin-top: 0.5rem;
@@ -48,4 +62,24 @@ a {
 
 .pill-link:hover {
   border-color: var(--accent-soft);
+}
+
+.feedback-copy {
+  margin: 0.8rem auto 0;
+  max-width: 45ch;
+}
+
+.feedback-actions {
+  margin-top: 1rem;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 0.6rem;
+}
+
+.feedback-note {
+  margin: 1rem auto 0;
+  color: rgba(247, 239, 255, 0.75);
+  max-width: 52ch;
+  font-size: 0.95rem;
 }

@@ -9,9 +9,20 @@ transition: slide-left
 mdc: true
 ---
 
-# Creative Computing Intro
+<script setup>
+import meta from "./presentation.config.json";
+</script>
+
+# {{ meta.title }}
 
 <div class="hero-subtitle">Art, code, and interaction in one flow.</div>
+<div class="hero-meta">
+  <span class="hero-meta-item">{{ meta.presentedAt || "Date TBD" }}</span>
+  <span class="hero-meta-divider">•</span>
+  <span class="hero-meta-item">{{ meta.presentedWhere || "Location TBD" }}</span>
+  <span class="hero-meta-divider">•</span>
+  <span class="hero-meta-item">{{ meta.occasion || "Occasion TBD" }}</span>
+</div>
 
 ---
 layout: two-cols
@@ -50,6 +61,10 @@ npm run dev -- --deck creative-computing-intro
 # Thank you
 
 <div class="hero-subtitle">Make every technical talk feel like a crafted piece.</div>
+
+---
+src: ./feedback.md
+---
 
 <style>
 @import url("../../engine/styles/artsy.css");
