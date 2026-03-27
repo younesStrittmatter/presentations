@@ -311,7 +311,7 @@ export default [
   },
   {
     title: "But wait… is it worth it?",
-    comicBulletBox: { items: ["Replication", "Training AI models", "Finding unified theories"], },
+    comicBulletBox: { items: ["Replication", "Training AI models", "Meta-analysis"], },
     paper,
     ink,
     canvasStyle: "retro-comic",
@@ -322,7 +322,7 @@ export default [
       items: [
         "Replication",
         "Training AI models",
-        "Finding unified theories",
+        "Meta-analysis",
         "Mapping out experimental design space",
       ],
     },
@@ -362,14 +362,11 @@ export default [
     title: "How does it work?",
     comicFlowDiagram: {
       nodes: [
-        // Column 1: Input
         { id: "paper", label: "Paper", icon: "paper", norm: { x: 0.02, y: 0.05, w: 0.15, h: 0.38 } },
         { id: "folder", label: "Data", icon: "folder", norm: { x: 0.02, y: 0.57, w: 0.15, h: 0.38 } },
-        // Column 2: Process
-        { id: "claims", label: "LLM", subtitle: "claims.py", icon: "gear", norm: { x: 0.28, y: 0.0, w: 0.15, h: 0.35 } },
+        { id: "claims", label: "LLM", subtitle: "claims.py", icon: "gear", norm: { x: 0.28, y: 0.0, w: 0.15, h: 0.35 }, highlight: true },
         { id: "feedback", label: "Feedback", icon: "feedback", norm: { x: 0.50, y: 0.0, w: 0.15, h: 0.35 } },
         { id: "llm", label: "LLM", subtitle: "build_script.py", icon: "gear", norm: { x: 0.38, y: 0.62, w: 0.15, h: 0.35 } },
-        // Column 3: Output
         { id: "dataset", label: "Standardized Dataset", icon: "database", norm: { x: 0.78, y: 0.20, w: 0.18, h: 0.55 } },
       ],
       edges: [
@@ -402,27 +399,173 @@ export default [
     canvasStyle: "retro-comic",
   },
   {
-    title: "MOTIVATION",
-    bullets: [
-      "Human experiments produce rich, heterogeneous data",
-      "Systematic curation is needed for reuse, analysis, and transparency",
-    ],
-    canvasStyle: "noir",
-  },
-  {
-    title: "PSYCHE \u2014 PIPELINE",
-    bullets: [
-      "Ingestion \u2192 harmonization \u2192 QC",
-      "Metadata, provenance, publication-ready artifacts",
-    ],
-    note: "Add your own stages where you need them.",
+    title: "Turn Paper Quotes into Executable Claims",
+    comicDrawables: {
+      drawables: [
+        { kind: "paperWithMagnifier", norm: { x: 0.0, y: 0.05, w: 0.35, h: 0.90 } },
+      ],
+    },
     paper,
     ink,
+    canvasStyle: "retro-comic",
   },
   {
-    title: "THANK YOU",
-    subtitle: "Questions?",
+    title: "Turn Paper Quotes into Executable Claims",
+    comicDrawables: {
+      drawables: [
+        { kind: "paperWithMagnifier", norm: { x: 0.0, y: 0.05, w: 0.35, h: 0.90 } },
+        { kind: "claimCard", quote: "...we recruited 42 participants...", code: "n_unique(subj_id) == 42", norm: { x: 0.40, y: 0.10, w: 0.55, h: 0.30 } },
+      ],
+    },
     paper,
     ink,
+    canvasStyle: "retro-comic",
   },
+  {
+    title: "Turn Paper Quotes into Executable Claims",
+    comicDrawables: {
+      drawables: [
+        { kind: "paperWithMagnifier", norm: { x: 0.0, y: 0.05, w: 0.35, h: 0.90 } },
+        { kind: "claimCard", quote: "...we recruited 42 participants...", code: "n_unique(subj_id) == 42", norm: { x: 0.40, y: 0.10, w: 0.55, h: 0.30 } },
+        { kind: "claimCard", quote: "Fourty-two young adults (22 female) ...", code: "count(subj_id, where sex == \"female\") == 74", norm: { x: 0.40, y: 0.46, w: 0.55, h: 0.30 } },
+      ],
+    },
+    paper,
+    ink,
+    canvasStyle: "retro-comic",
+  },
+  {
+    title: "Turn Paper Quotes into Executable Claims",
+    comicDrawables: {
+      drawables: [
+        { kind: "paperWithMagnifier", norm: { x: 0.0, y: 0.05, w: 0.35, h: 0.90 } },
+        { kind: "claimCard", quote: "...we recruited 42 participants...", code: "n_unique(subj_id) == 42", norm: { x: 0.40, y: 0.04, w: 0.55, h: 0.27 } },
+        { kind: "claimCard", quote: "Fourty-two young adults (22 female) ...", code: "count(subj_id, where sex == \"female\") == 74", norm: { x: 0.40, y: 0.35, w: 0.55, h: 0.27 } },
+        { kind: "claimCard", quote: "Participants completed the task for six blocks (96 trials)...", code: "count(trial_nr) == 96 * 6", norm: { x: 0.40, y: 0.66, w: 0.55, h: 0.27 } },
+      ],
+    },
+    paper,
+    ink,
+    canvasStyle: "retro-comic",
+  },
+  {
+    title: "Turn Paper Quotes into Executable Claims",
+    comicDrawables: {
+      drawables: [
+        { kind: "paperWithMagnifier", norm: { x: 0.0, y: 0.05, w: 0.35, h: 0.90 } },
+        { kind: "claimCard", quote: "...we recruited 42 participants...", code: "n_unique(subj_id) == 42", norm: { x: 0.40, y: 0.02, w: 0.55, h: 0.21 } },
+        { kind: "claimCard", quote: "Fourty-two young adults (22 female) ...", code: "count(subj_id, where sex == \"female\") == 74", norm: { x: 0.40, y: 0.26, w: 0.55, h: 0.21 } },
+        { kind: "claimCard", quote: "Participants completed the task for six blocks (96 trials)...", code: "count(trial_nr) == 96 * 6", norm: { x: 0.40, y: 0.50, w: 0.55, h: 0.21 } },
+        { kind: "claimCard", quote: "Older adults performed best at Type IV, M = 0.62, SD = 0.08", code: "mean(correct, where age_group == \"older\" & condition == \"Type IV\") ≈ 0.62", norm: { x: 0.40, y: 0.74, w: 0.55, h: 0.23 } },
+      ],
+    },
+    paper,
+    ink,
+    canvasStyle: "retro-comic",
+  },
+  {
+    title: "Feedback Makes This Reliable",
+    comicFlowDiagram: {
+      nodes: [
+        { id: "paper", label: "Paper", icon: "paper", norm: { x: 0.02, y: 0.05, w: 0.15, h: 0.38 } },
+        { id: "folder", label: "Data", icon: "folder", norm: { x: 0.02, y: 0.57, w: 0.15, h: 0.38 } },
+        { id: "claims", label: "LLM", subtitle: "claims.py", icon: "gear", norm: { x: 0.28, y: 0.0, w: 0.15, h: 0.35 }, highlight: true },
+        { id: "feedback", label: "Feedback", icon: "feedback", norm: { x: 0.50, y: 0.0, w: 0.15, h: 0.35 } },
+        { id: "llm", label: "LLM", subtitle: "build_script.py", icon: "gear", norm: { x: 0.38, y: 0.62, w: 0.15, h: 0.35 } },
+        { id: "dataset", label: "Standardized Dataset", icon: "database", norm: { x: 0.78, y: 0.20, w: 0.18, h: 0.55 } },
+      ],
+      edges: [
+        { from: "paper", to: "claims" },
+        { from: "claims", to: "feedback" },
+        { from: "paper", to: "llm" },
+        { from: "folder", to: "llm" },
+        { from: "llm", to: "dataset" },
+        { from: "dataset", to: "feedback" },
+        { from: "feedback", to: "llm" },
+      ],
+    },
+    paper,
+    ink,
+    canvasStyle: "retro-comic",
+  },
+  {
+    title: "Superpower — Translation",
+    comicFlowDiagram: {
+      label: { line1: "Next Issue" },
+      nodes: [
+        {
+          id: "dataset", label: "Standardized Dataset", icon: "database",
+          norm: { x: 0.10, y: 0.05, w: 0.22, h: 0.90 },
+          inlineTable: {
+            columns: ["word", "color", "response"],
+            rows: [["RED", "green", "green"], ["BLUE", "blue", "blue"], ["GREEN", "red", "red"]],
+          },
+        },
+        {
+          id: "description", label: "LLM Training", icon: "textdoc",
+          norm: { x: 0.55, y: 0.0, w: 0.28, h: 0.44 },
+          inlineText: "\"You see the word RED written in green and press green.\"",
+        },
+        {
+          id: "replication", label: "Replication", icon: "monitor",
+          norm: { x: 0.55, y: 0.52, w: 0.28, h: 0.44 },
+        },
+      ],
+      edges: [
+        { from: "dataset", to: "description" },
+        { from: "dataset", to: "replication" },
+      ],
+    },
+    paper,
+    ink,
+    canvasStyle: "retro-comic",
+  },
+  {
+    title: "Superpower — Metascience",
+    comicFlowDiagram: {
+      label: { line1: "Next Issue" },
+      nodes: [
+        {
+          id: "dataset", label: "Standardized Dataset", icon: "database",
+          norm: { x: 0.10, y: 0.05, w: 0.22, h: 0.90 },
+          inlineTable: {
+            columns: ["age", "task", "rt"],
+            rows: [["23", "stroop", "412"], ["67", "flanker", "538"], ["23", "flanker", "389"]],
+          },
+        },
+        {
+          id: "meta", label: "Meta-Analysis", icon: "chart",
+          norm: { x: 0.55, y: 0.0, w: 0.28, h: 0.44 },
+          inlineText: "\"How does age affect reaction time across tasks?\"",
+        },
+        {
+          id: "designspace", label: "Design Space", icon: "grid",
+          norm: { x: 0.55, y: 0.52, w: 0.28, h: 0.44 },
+          inlineText: "\"Which combinations of age and task haven't been tested yet?\"",
+        },
+      ],
+      edges: [
+        { from: "dataset", to: "meta" },
+        { from: "dataset", to: "designspace" },
+      ],
+    },
+    paper,
+    ink,
+    canvasStyle: "retro-comic",
+  },
+  {
+    title: "Thank You!",
+    comicCover: {
+      issue: "1",
+      price: "OPEN",
+      date: presentedAt,
+      tagline:"Questions?",
+      byline: coverCredits,
+      heroSrc: psycheTitleAsset,
+    },
+    paper,
+    ink,
+    canvasStyle: "retro-comic",
+  },
+  
 ] satisfies CanvasScene[];

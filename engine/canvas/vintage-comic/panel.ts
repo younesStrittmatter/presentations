@@ -69,7 +69,8 @@ export type ComicNarrationMeta = {
 };
 
 export type ComicDrawable =
-  | { kind: "paperWithMagnifier"; norm: { x: number; y: number; w: number; h: number } };
+  | { kind: "paperWithMagnifier"; norm: { x: number; y: number; w: number; h: number } }
+  | { kind: "claimCard"; quote: string; code: string; norm: { x: number; y: number; w: number; h: number } };
 
 type PanelImgEntry = {
   status: "loading" | "ready" | "error";
@@ -1012,6 +1013,81 @@ function drawPaperWithMagnifier(
   ctx.restore();
 }
 
+function drawClaimCard(
+  ctx: CanvasRenderingContext2D,
+  quote: string,
+  code: string,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  ink: string,
+  R: typeof retroComicRoot,
+): void {
+  const rr = Math.min(10, w * 0.03);
+  const lw = Math.max(2, w * 0.012);
+
+  // Box
+  ctx.save();
+  ctx.beginPath();
+  if (typeof ctx.roundRect === "function") {
+    ctx.roundRect(x, y, w, h, rr);
+  } else {
+    ctx.rect(x, y, w, h);
+  }
+  ctx.fillStyle = R.halo;
+  ctx.fill();
+  ctx.strokeStyle = ink;
+  ctx.lineWidth = lw;
+  ctx.stroke();
+
+  const padX = w * 0.06;
+  const padY = h * 0.08;
+  const dividerY = y + h * 0.50;
+
+  // Divider line
+  ctx.beginPath();
+  ctx.moveTo(x + padX, dividerY);
+  ctx.lineTo(x + w - padX, dividerY);
+  ctx.strokeStyle = R.processYellow;
+  ctx.lineWidth = Math.max(1.5, lw * 0.8);
+  ctx.stroke();
+
+  // Quote (top half, italic)
+  const quoteFontPx = Math.max(10, Math.round(h * 0.12));
+  ctx.font = `italic 500 ${quoteFontPx}px ${retroComicCoverBodyFontStack}`;
+  ctx.fillStyle = ink;
+  ctx.textAlign = "left";
+  ctx.textBaseline = "top";
+
+  const maxTextW = w - padX * 2;
+  const quoteLines = wrapLines(ctx, `"${quote}"`, maxTextW);
+  const quoteLh = quoteFontPx * 1.25;
+  const quoteBlockH = quoteLines.length * quoteLh;
+  let qy = y + padY + ((dividerY - y - padY) - quoteBlockH) * 0.5;
+  for (const ln of quoteLines) {
+    ctx.fillText(ln, x + padX, qy);
+    qy += quoteLh;
+  }
+
+  // Code (bottom half, monospace)
+  const codeFontPx = Math.max(9, Math.round(h * 0.11));
+  ctx.font = `600 ${codeFontPx}px ui-monospace, "Courier New", monospace`;
+  ctx.fillStyle = "#7c4dff";
+
+  const codeLines = wrapLines(ctx, code, maxTextW);
+  const codeLh = codeFontPx * 1.3;
+  const codeBlockH = codeLines.length * codeLh;
+  const bottomH = y + h - dividerY - padY;
+  let cy = dividerY + padY * 0.5 + (bottomH - codeBlockH) * 0.5;
+  for (const ln of codeLines) {
+    ctx.fillText(ln, x + padX, cy);
+    cy += codeLh;
+  }
+
+  ctx.restore();
+}
+
 function drawComicDrawable(
   ctx: CanvasRenderingContext2D,
   drawable: ComicDrawable,
@@ -1029,6 +1105,9 @@ function drawComicDrawable(
   switch (drawable.kind) {
     case "paperWithMagnifier":
       drawPaperWithMagnifier(ctx, nx, ny, nw, nh, ink);
+      break;
+    case "claimCard":
+      drawClaimCard(ctx, drawable.quote, drawable.code, nx, ny, nw, nh, ink, retroComicRoot);
       break;
   }
 }
@@ -1734,14 +1813,22 @@ export function drawComicBulletBoxLayout(
 
 /* ─── Comic flow-diagram layout ─── */
 
-export type FlowNodeIcon = "paper" | "folder" | "box" | "database" | "gear" | "feedback";
+export type FlowNodeIcon = "paper" | "folder" | "box" | "database" | "gear" | "feedback" | "monitor" | "textdoc" | "chart" | "grid";
 
 export type FlowNode = {
   id: string;
   label: string;
   subtitle?: string;
+  /** Longer example text rendered below the node box in a smaller font. */
+  detail?: string;
   icon?: FlowNodeIcon;
   norm: { x: number; y: number; w: number; h: number };
+  /** When true, draws a coloured glow/border to visually highlight this node. */
+  highlight?: boolean;
+  /** Mini table rendered inside the node box (below icon/label). */
+  inlineTable?: { columns: string[]; rows: string[][] };
+  /** Italic text rendered inside the node box (below icon/label). */
+  inlineText?: string;
 };
 
 export type FlowEdge = {
@@ -1753,6 +1840,8 @@ export type FlowEdge = {
 export type ComicFlowDiagramMeta = {
   nodes: FlowNode[];
   edges: FlowEdge[];
+  /** Corner label drawn in the same style as the cover "ISSUE #N" badge. */
+  label?: { line1: string; line2?: string };
 };
 
 function drawPaperIcon(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, ink: string): void {
@@ -1970,6 +2059,220 @@ function drawFeedbackIcon(ctx: CanvasRenderingContext2D, x: number, y: number, w
   ctx.restore();
 }
 
+function drawMonitorIcon(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, ink: string): void {
+  const lw = Math.max(1.5, w * 0.02);
+  const bezR = Math.min(w, h) * 0.06;
+  const bodyH = h * 0.72;
+  const standW = w * 0.25;
+  const standH = h * 0.1;
+  const baseW = w * 0.4;
+  const baseH = h * 0.05;
+
+  // Monitor body
+  ctx.fillStyle = "#333";
+  ctx.beginPath();
+  if (typeof ctx.roundRect === "function") {
+    ctx.roundRect(x, y, w, bodyH, bezR);
+    ctx.fill();
+  } else {
+    ctx.fillRect(x, y, w, bodyH);
+  }
+
+  // Screen
+  const bezel = Math.max(3, w * 0.06);
+  ctx.fillStyle = "#1a1a2e";
+  ctx.beginPath();
+  if (typeof ctx.roundRect === "function") {
+    ctx.roundRect(x + bezel, y + bezel, w - bezel * 2, bodyH - bezel * 2.2, bezR * 0.5);
+    ctx.fill();
+  } else {
+    ctx.fillRect(x + bezel, y + bezel, w - bezel * 2, bodyH - bezel * 2.2);
+  }
+
+  // Stroop-like content on screen
+  const sx = x + bezel;
+  const sy = y + bezel;
+  const sw = w - bezel * 2;
+  const sh = bodyH - bezel * 2.2;
+  const wordFont = Math.max(8, Math.round(sh * 0.35));
+  ctx.font = `700 ${wordFont}px ui-monospace, monospace`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillStyle = "#4caf50";
+  ctx.fillText("RED", sx + sw * 0.5, sy + sh * 0.5);
+
+  // Stand
+  ctx.fillStyle = "#555";
+  ctx.fillRect(x + (w - standW) * 0.5, y + bodyH, standW, standH);
+  // Base
+  ctx.fillStyle = "#444";
+  if (typeof ctx.roundRect === "function") {
+    ctx.beginPath();
+    ctx.roundRect(x + (w - baseW) * 0.5, y + bodyH + standH, baseW, baseH, baseH * 0.4);
+    ctx.fill();
+  } else {
+    ctx.fillRect(x + (w - baseW) * 0.5, y + bodyH + standH, baseW, baseH);
+  }
+
+  ctx.strokeStyle = ink;
+  ctx.lineWidth = lw;
+  ctx.beginPath();
+  if (typeof ctx.roundRect === "function") {
+    ctx.roundRect(x, y, w, bodyH, bezR);
+    ctx.stroke();
+  } else {
+    ctx.strokeRect(x, y, w, bodyH);
+  }
+}
+
+function drawTextdocIcon(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, ink: string): void {
+  const lw = Math.max(1.5, w * 0.02);
+  const rr = Math.min(w, h) * 0.04;
+
+  // Page
+  ctx.beginPath();
+  if (typeof ctx.roundRect === "function") {
+    ctx.roundRect(x, y, w, h, rr);
+  } else {
+    ctx.rect(x, y, w, h);
+  }
+  ctx.fillStyle = "#f0f4ff";
+  ctx.fill();
+  ctx.strokeStyle = ink;
+  ctx.lineWidth = lw;
+  ctx.stroke();
+
+  // Title line
+  const margin = w * 0.12;
+  ctx.fillStyle = "#5c6bc0";
+  ctx.fillRect(x + margin, y + h * 0.1, w * 0.5, h * 0.06);
+
+  // Paragraph lines
+  ctx.fillStyle = "#bbb";
+  for (let i = 0; i < 6; i++) {
+    const ly = y + h * 0.24 + i * h * 0.1;
+    const lineW = w - margin * 2 - (i % 3 === 2 ? w * 0.2 : 0);
+    if (ly + h * 0.04 < y + h - h * 0.08) {
+      ctx.fillRect(x + margin, ly, lineW, h * 0.035);
+    }
+  }
+
+  // Highlight block (representing experiment description)
+  ctx.fillStyle = "rgba(92,107,192,0.12)";
+  ctx.fillRect(x + margin * 0.5, y + h * 0.22, w - margin, h * 0.42);
+}
+
+function drawChartIcon(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, ink: string): void {
+  const lw = Math.max(1.5, Math.min(w, h) * 0.03);
+  const pad = w * 0.10;
+  const ax = x + pad;
+  const ay = y + h - pad;
+  const aw = w - pad * 2;
+  const ah = h - pad * 2;
+
+  // Axes
+  ctx.strokeStyle = ink;
+  ctx.lineWidth = lw * 1.4;
+  ctx.beginPath();
+  ctx.moveTo(ax, y + pad * 0.6);
+  ctx.lineTo(ax, ay);
+  ctx.lineTo(ax + aw + pad * 0.3, ay);
+  ctx.stroke();
+
+  // Bars
+  const barColors = ["#5c6bc0", "#ef5350", "#66bb6a", "#ffa726"];
+  const nBars = 4;
+  const gap = aw * 0.06;
+  const barW = (aw - gap * (nBars + 1)) / nBars;
+  const heights = [0.55, 0.85, 0.40, 0.70];
+  for (let i = 0; i < nBars; i++) {
+    const bx = ax + gap + i * (barW + gap);
+    const bh = ah * heights[i]!;
+    const by = ay - bh;
+    ctx.fillStyle = barColors[i]!;
+    ctx.fillRect(bx, by, barW, bh);
+    ctx.strokeStyle = ink;
+    ctx.lineWidth = lw * 0.6;
+    ctx.strokeRect(bx, by, barW, bh);
+  }
+
+  // Trend line
+  ctx.strokeStyle = "#d32f2f";
+  ctx.lineWidth = lw * 1.2;
+  ctx.setLineDash([4, 3]);
+  ctx.beginPath();
+  for (let i = 0; i < nBars; i++) {
+    const bx = ax + gap + i * (barW + gap) + barW * 0.5;
+    const bh = ah * heights[i]!;
+    const by = ay - bh - ah * 0.05;
+    if (i === 0) ctx.moveTo(bx, by); else ctx.lineTo(bx, by);
+  }
+  ctx.stroke();
+  ctx.setLineDash([]);
+}
+
+function drawGridIcon(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, ink: string): void {
+  const lw = Math.max(1.5, Math.min(w, h) * 0.025);
+  const pad = w * 0.08;
+  const gx = x + pad;
+  const gy = y + pad;
+  const gw = w - pad * 2;
+  const gh = h - pad * 2;
+  const rows = 4;
+  const cols = 4;
+  const cellW = gw / cols;
+  const cellH = gh / rows;
+
+  // Filled cells (known combinations)
+  const filled: [number, number, string][] = [
+    [0, 0, "#5c6bc0"], [0, 2, "#5c6bc0"],
+    [1, 1, "#66bb6a"], [1, 3, "#66bb6a"],
+    [2, 0, "#ffa726"], [2, 2, "#ffa726"],
+    [3, 1, "#ef5350"], [3, 3, "#ef5350"],
+  ];
+  for (const [r, c, color] of filled) {
+    ctx.fillStyle = color;
+    ctx.globalAlpha = 0.55;
+    ctx.fillRect(gx + c * cellW, gy + r * cellH, cellW, cellH);
+    ctx.globalAlpha = 1;
+  }
+
+  // Question marks in empty cells
+  const qFont = Math.max(8, Math.min(cellW, cellH) * 0.45);
+  ctx.font = `700 ${qFont}px ui-sans-serif, system-ui, sans-serif`;
+  ctx.fillStyle = "#aaa";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  const filledSet = new Set(filled.map(([r, c]) => `${r},${c}`));
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) {
+      if (!filledSet.has(`${r},${c}`)) {
+        ctx.fillText("?", gx + c * cellW + cellW * 0.5, gy + r * cellH + cellH * 0.5);
+      }
+    }
+  }
+
+  // Grid lines
+  ctx.strokeStyle = ink;
+  ctx.lineWidth = lw;
+  for (let r = 0; r <= rows; r++) {
+    ctx.beginPath();
+    ctx.moveTo(gx, gy + r * cellH);
+    ctx.lineTo(gx + gw, gy + r * cellH);
+    ctx.stroke();
+  }
+  for (let c = 0; c <= cols; c++) {
+    ctx.beginPath();
+    ctx.moveTo(gx + c * cellW, gy);
+    ctx.lineTo(gx + c * cellW, gy + gh);
+    ctx.stroke();
+  }
+
+  // Outer border thicker
+  ctx.lineWidth = lw * 2;
+  ctx.strokeRect(gx, gy, gw, gh);
+}
+
 const flowIconDrawers: Record<FlowNodeIcon, (ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, ink: string) => void> = {
   paper: drawPaperIcon,
   folder: drawFolderIcon,
@@ -1977,6 +2280,10 @@ const flowIconDrawers: Record<FlowNodeIcon, (ctx: CanvasRenderingContext2D, x: n
   database: drawDatabaseIcon,
   gear: drawGearIcon,
   feedback: drawFeedbackIcon,
+  monitor: drawMonitorIcon,
+  textdoc: drawTextdocIcon,
+  chart: drawChartIcon,
+  grid: drawGridIcon,
 };
 
 function drawFlowNode(
@@ -1999,16 +2306,36 @@ function drawFlowNode(
 
   // Background box
   ctx.save();
+
+  if (node.highlight) {
+    const glowPad = lw * 3;
+    ctx.shadowColor = "#f9c523";
+    ctx.shadowBlur = glowPad * 3;
+    ctx.beginPath();
+    if (typeof ctx.roundRect === "function") {
+      ctx.roundRect(nx - glowPad, ny - glowPad, nw + glowPad * 2, nh + glowPad * 2, rr + 2);
+    } else {
+      ctx.rect(nx - glowPad, ny - glowPad, nw + glowPad * 2, nh + glowPad * 2);
+    }
+    ctx.fillStyle = "rgba(249,197,35,0.12)";
+    ctx.fill();
+    ctx.strokeStyle = "#f9c523";
+    ctx.lineWidth = lw * 2;
+    ctx.stroke();
+    ctx.shadowColor = "transparent";
+    ctx.shadowBlur = 0;
+  }
+
   ctx.beginPath();
   if (typeof ctx.roundRect === "function") {
     ctx.roundRect(nx, ny, nw, nh, rr);
   } else {
     ctx.rect(nx, ny, nw, nh);
   }
-  ctx.fillStyle = R.halo;
+  ctx.fillStyle = node.highlight ? "#fffde7" : R.halo;
   ctx.fill();
-  ctx.strokeStyle = ink;
-  ctx.lineWidth = lw;
+  ctx.strokeStyle = node.highlight ? "#f9c523" : ink;
+  ctx.lineWidth = node.highlight ? lw * 2 : lw;
   ctx.stroke();
 
   // Icon
@@ -2038,6 +2365,118 @@ function drawFlowNode(
     ctx.font = `italic 500 ${subFont}px ${retroComicCoverBodyFontStack}`;
     ctx.fillStyle = R.inkMuted;
     ctx.fillText(node.subtitle, nx + nw * 0.5, ty + fontSize * 0.15);
+    ty += subFont * 1.2;
+  }
+
+  // Inline table inside the box
+  if (node.inlineTable) {
+    const { columns, rows } = node.inlineTable;
+    const tFont = Math.max(8, fontSize * 0.52);
+    const hFont = Math.max(8, fontSize * 0.52);
+    const tPadX = nw * 0.04;
+    const tTop = ty + fontSize * 0.5;
+    const tW = nw - tPadX * 2;
+    const nCols = columns.length;
+    const colW = tW / nCols;
+    const rowH = tFont * 1.7;
+    const tX = nx + tPadX;
+    const gridLw = Math.max(0.8, nw * 0.004);
+
+    // Header bg
+    ctx.fillStyle = R.processYellow;
+    ctx.fillRect(tX, tTop, tW, rowH);
+
+    // Alternating rows
+    for (let r = 0; r < rows.length; r++) {
+      if (r % 2 === 1) {
+        ctx.fillStyle = R.paperMuted;
+        ctx.fillRect(tX, tTop + (r + 1) * rowH, tW, rowH);
+      }
+    }
+
+    // Grid
+    ctx.strokeStyle = ink;
+    ctx.lineWidth = gridLw;
+    ctx.beginPath();
+    for (let r = 0; r <= rows.length + 1; r++) {
+      const ly = tTop + r * rowH;
+      ctx.moveTo(tX, ly);
+      ctx.lineTo(tX + tW, ly);
+    }
+    for (let c = 0; c <= nCols; c++) {
+      ctx.moveTo(tX + c * colW, tTop);
+      ctx.lineTo(tX + c * colW, tTop + (rows.length + 1) * rowH);
+    }
+    ctx.stroke();
+
+    // Header separator
+    ctx.lineWidth = gridLw * 2;
+    ctx.beginPath();
+    ctx.moveTo(tX, tTop + rowH);
+    ctx.lineTo(tX + tW, tTop + rowH);
+    ctx.stroke();
+
+    // Outer border
+    ctx.strokeRect(tX, tTop, tW, (rows.length + 1) * rowH);
+
+    // Header text
+    ctx.font = `700 ${hFont}px ${retroComicCoverBodyFontStack}`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "top";
+    ctx.fillStyle = ink;
+    for (let c = 0; c < nCols; c++) {
+      ctx.fillText(columns[c]!, tX + c * colW + colW * 0.5, tTop + rowH * 0.5 - hFont * 0.4);
+    }
+
+    // Cell text
+    ctx.font = `400 ${tFont}px ${retroComicCoverBodyFontStack}`;
+    for (let r = 0; r < rows.length; r++) {
+      const row = rows[r]!;
+      for (let c = 0; c < nCols; c++) {
+        const val = c < row.length ? row[c] : "";
+        if (val) {
+          ctx.fillText(val, tX + c * colW + colW * 0.5, tTop + (r + 1) * rowH + rowH * 0.5 - tFont * 0.4);
+        }
+      }
+    }
+  }
+
+  // Inline text inside the box
+  if (node.inlineText) {
+    const itFont = Math.max(9, fontSize * 0.58);
+    const itTop = ty + fontSize * 0.5;
+    ctx.font = `italic 400 ${itFont}px ${retroComicCoverBodyFontStack}`;
+    ctx.fillStyle = R.inkMuted;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "top";
+    const itLines = wrapLines(ctx, node.inlineText, nw * 0.85);
+    const itLh = itFont * 1.3;
+    let iy = itTop;
+    for (const ln of itLines) {
+      ctx.fillText(ln, nx + nw * 0.5, iy);
+      iy += itLh;
+    }
+  }
+
+  // Detail text below the box
+  if (node.detail) {
+    const detailFont = Math.max(9, fontSize * 0.62);
+    const detailPad = nh * 0.06;
+    ctx.font = `400 ${detailFont}px ui-monospace, "Courier New", monospace`;
+    ctx.fillStyle = R.inkMuted;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "top";
+    const rawLines = node.detail.split("\n");
+    const detailLines: string[] = [];
+    for (const rl of rawLines) {
+      for (const wl of wrapLines(ctx, rl, nw * 1.2)) detailLines.push(wl);
+    }
+    const dlh = detailFont * 1.25;
+    let dy = ny + nh + detailPad;
+    for (const ln of detailLines) {
+      ctx.fillText(ln, nx + nw * 0.5, dy);
+      dy += dlh;
+    }
   }
 
   ctx.restore();
@@ -2211,6 +2650,41 @@ export function drawComicFlowDiagramLayout(
     titleStyle ? { ...titleStyle, align: "center" } : { align: "center" }
   );
 
+  // Corner label badge (same style as cover issue badge)
+  if (meta.label) {
+    const labelW = Math.min(innerW * 0.22, 160);
+    const labelH = Math.round(labelW * 0.9);
+    const lx = innerRight - labelW - pad * 0.2;
+    const ly = innerTop + pad * 0.35;
+    ctx.save();
+    ctx.translate(lx + labelW * 0.5, ly + labelH * 0.5);
+    ctx.rotate(-0.11);
+    ctx.fillStyle = R.processRed;
+    ctx.strokeStyle = ink;
+    ctx.lineWidth = Math.max(2, borderW * 0.35);
+    if (typeof ctx.roundRect === "function") {
+      ctx.beginPath();
+      ctx.roundRect(-labelW / 2, -labelH / 2, labelW, labelH, 6);
+      ctx.fill();
+      ctx.stroke();
+    } else {
+      ctx.fillRect(-labelW / 2, -labelH / 2, labelW, labelH);
+      ctx.strokeRect(-labelW / 2, -labelH / 2, labelW, labelH);
+    }
+    ctx.fillStyle = R.halo;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "top";
+    const l1Px = Math.round(labelW * 0.13);
+    const l2Px = Math.round(labelW * 0.28);
+    ctx.font = `700 ${l1Px}px ui-sans-serif, system-ui, sans-serif`;
+    ctx.fillText(meta.label.line1.toUpperCase(), 0, -labelH * 0.18);
+    if (meta.label.line2) {
+      ctx.font = `800 ${l2Px}px ui-sans-serif, system-ui, sans-serif`;
+      ctx.fillText(meta.label.line2.toUpperCase(), 0, labelH * 0.02);
+    }
+    ctx.restore();
+  }
+
   const contentTop = innerTop + titlePx * 1.12 + pad * 0.35;
   const contentBottom = innerTop + innerPanelH - pad * 0.28;
   const contentH = Math.max(100, contentBottom - contentTop);
@@ -2238,6 +2712,84 @@ export function drawComicFlowDiagramLayout(
   for (const node of meta.nodes) {
     const r = getNodeCenter(node, innerLeft, contentTop, innerW, contentH);
     drawFlowNode(ctx, node, r.x, r.y, r.w, r.h, ink, R, nodeFontPx);
+  }
+
+  ctx.restore();
+}
+
+/* ─── Comic drawables-only layout ─── */
+
+export type ComicDrawablesMeta = {
+  drawables: ComicDrawable[];
+};
+
+export function drawComicDrawablesLayout(
+  ctx: CanvasRenderingContext2D,
+  scene: SlideScene2d,
+  w: number,
+  h: number,
+  tokens2d: CanvasTokens2d,
+  paper: string,
+  ink: string,
+  titleStyle: CanvasBlockStyle | undefined
+): void {
+  const meta = scene.comicDrawables!;
+  const t = tokens2d;
+  const pad = Math.round(Math.min(w, h) * t.padRatio);
+  const R = retroComicRoot;
+
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+  ctx.textBaseline = "top";
+
+  ctx.fillStyle = paper;
+  ctx.fillRect(0, 0, w, h);
+
+  const borderW = Math.max(6, Math.round(Math.min(w, h) * 0.012));
+  ctx.strokeStyle = ink;
+  ctx.lineWidth = borderW;
+  ctx.strokeRect(borderW * 0.5, borderW * 0.5, w - borderW, h - borderW);
+
+  const innerLeft = borderW + pad * 0.45;
+  const innerRight = w - borderW - pad * 0.45;
+  const innerTop = borderW + pad * 0.35;
+  const innerW = innerRight - innerLeft;
+  const innerBottom = h - borderW - pad * 0.55;
+  const innerPanelH = Math.max(80, innerBottom - innerTop - 2);
+
+  ctx.strokeStyle = R.processYellow;
+  ctx.lineWidth = Math.max(2, borderW * 0.22);
+  ctx.setLineDash([6, 5]);
+  if (typeof ctx.roundRect === "function") {
+    ctx.beginPath();
+    ctx.roundRect(innerLeft + 2, innerTop + 2, innerW - 4, innerPanelH - 4, 8);
+    ctx.stroke();
+  } else {
+    ctx.strokeRect(innerLeft + 2, innerTop + 2, innerW - 4, innerPanelH - 4);
+  }
+  ctx.setLineDash([]);
+
+  const titlePx = Math.max(38, Math.round(Math.min(w, h) * 0.09));
+  ctx.textAlign = "center";
+  ctx.font = t.titleFont(titlePx);
+  drawStyledTextLine(
+    ctx,
+    (scene.title ?? "").toUpperCase(),
+    w / 2,
+    innerTop + pad * 0.15,
+    ink,
+    1,
+    titleStyle ? { ...titleStyle, align: "center" } : { align: "center" }
+  );
+
+  const contentTop = innerTop + titlePx * 1.12 + pad * 0.35;
+  const contentBottom = innerTop + innerPanelH - pad * 0.28;
+  const contentH = Math.max(100, contentBottom - contentTop);
+
+  for (const d of meta.drawables) {
+    drawComicDrawable(ctx, d, innerLeft, contentTop, innerW, contentH, ink);
   }
 
   ctx.restore();

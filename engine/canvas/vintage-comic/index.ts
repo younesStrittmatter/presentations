@@ -5,6 +5,7 @@ export {
 } from "./cover";
 export {
   drawComicBulletBoxLayout,
+  drawComicDrawablesLayout,
   drawComicFlowDiagramLayout,
   drawComicNarrationLayout,
   drawComicPanelLayout,
@@ -12,6 +13,7 @@ export {
   preloadComicNarrationImages,
   preloadComicPanelImages,
   type ComicBulletBoxMeta,
+  type ComicDrawablesMeta,
   type ComicFlowDiagramMeta,
   type ComicNarrationMeta,
   type ComicNarrationThinkBubble,
