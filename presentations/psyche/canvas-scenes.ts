@@ -339,6 +339,7 @@ export default [
         { id: "folder", label: "Data", icon: "folder", norm: { x: 0.02, y: 0.57, w: 0.15, h: 0.38 } },
         // Column 2: Process
         { id: "claims", label: "LLM", subtitle: "claims.py", icon: "gear", norm: { x: 0.28, y: 0.0, w: 0.15, h: 0.35 } },
+        { id: "standard", label: "Dataset Standard", norm: { x: 0.31, y: 0.38, w: 0.12, h: 0.20 } },
         { id: "feedback", label: "Feedback", icon: "feedback", norm: { x: 0.50, y: 0.0, w: 0.15, h: 0.35 } },
         { id: "llm", label: "LLM", subtitle: "build_script.py", icon: "gear", norm: { x: 0.38, y: 0.62, w: 0.15, h: 0.35 } },
         // Column 3: Output
@@ -349,6 +350,8 @@ export default [
         { from: "claims", to: "feedback" },
         { from: "paper", to: "llm" },
         { from: "folder", to: "llm" },
+        { from: "standard", to: "claims" },
+        { from: "standard", to: "llm" },
         { from: "llm", to: "dataset" },
         { from: "dataset", to: "feedback" },
         { from: "feedback", to: "llm" },
@@ -362,9 +365,74 @@ export default [
     title: "How does it work?",
     comicFlowDiagram: {
       nodes: [
+        // Column 1: Input
+        { id: "paper", label: "Paper", icon: "paper", norm: { x: 0.02, y: 0.05, w: 0.15, h: 0.38 } },
+        { id: "folder", label: "Data", icon: "folder", norm: { x: 0.02, y: 0.57, w: 0.15, h: 0.38 } },
+        // Column 2: Process
+        { id: "claims", label: "LLM", subtitle: "claims.py", icon: "gear", norm: { x: 0.28, y: 0.0, w: 0.15, h: 0.35 } },
+        { id: "standard", label: "Dataset Standard", norm: { x: 0.31, y: 0.38, w: 0.12, h: 0.20 } , highlight: true },
+        { id: "feedback", label: "Feedback", icon: "feedback", norm: { x: 0.50, y: 0.0, w: 0.15, h: 0.35 } },
+        { id: "llm", label: "LLM", subtitle: "build_script.py", icon: "gear", norm: { x: 0.38, y: 0.62, w: 0.15, h: 0.35 } , highlight: true},
+        // Column 3: Output
+        { id: "dataset", label: "Standardized Dataset", icon: "database", norm: { x: 0.78, y: 0.20, w: 0.18, h: 0.55 } },
+      ],
+      edges: [
+        { from: "paper", to: "claims" },
+        { from: "claims", to: "feedback" },
+        { from: "paper", to: "llm" },
+        { from: "folder", to: "llm" },
+        { from: "standard", to: "claims" },
+        { from: "standard", to: "llm" },
+        { from: "llm", to: "dataset" },
+        { from: "dataset", to: "feedback" },
+        { from: "feedback", to: "llm" },
+      ],
+    },
+    paper,
+    ink,
+    canvasStyle: "retro-comic",
+  },
+  {
+    title: "Dataset Standard",
+    subtitle: "A mapping from column labels to semantic meaning",
+    comicTable: {
+      columns: ["column", "description", "rules"],
+      rows: [
+        ["subject_id", "Unique subject identifier", "categorical, essential"],
+        ["correct", "Accuracy outcome", "levels: 0, 1"],
+        ["reaction_time", "Response time", "numeric (ms or s)"],
+      ],
+    },
+    paper,
+    ink,
+    canvasStyle: "retro-comic",
+  },
+  {
+    title: "LLM — build_script.py",
+    subtitle: "Transforms raw data into the standardized format",
+    comicBulletBox: {
+      items: [
+        'load("raw_data/*.csv")',
+        'rename("Subject" → "subject_id", "AGE" → "age")',
+        'remap("SEX_M1_F0", {1: "male", 0: "female"})',
+        'parse_stimulus("BigBlackSquare.bmp" → {size, color, shape})',
+        'map_response({"f": "Alpha", "j": "Beta"})',
+        'assign_blocks(trials_per_block=16)',
+        'export("exp1.csv")',
+      ],
+    },
+    paper,
+    ink,
+    canvasStyle: "retro-comic",
+  },
+  {
+    title: "How does it work?",
+    comicFlowDiagram: {
+      nodes: [
         { id: "paper", label: "Paper", icon: "paper", norm: { x: 0.02, y: 0.05, w: 0.15, h: 0.38 } },
         { id: "folder", label: "Data", icon: "folder", norm: { x: 0.02, y: 0.57, w: 0.15, h: 0.38 } },
         { id: "claims", label: "LLM", subtitle: "claims.py", icon: "gear", norm: { x: 0.28, y: 0.0, w: 0.15, h: 0.35 }, highlight: true },
+        { id: "standard", label: "Dataset Standard", norm: { x: 0.31, y: 0.38, w: 0.12, h: 0.20 } },
         { id: "feedback", label: "Feedback", icon: "feedback", norm: { x: 0.50, y: 0.0, w: 0.15, h: 0.35 } },
         { id: "llm", label: "LLM", subtitle: "build_script.py", icon: "gear", norm: { x: 0.38, y: 0.62, w: 0.15, h: 0.35 } },
         { id: "dataset", label: "Standardized Dataset", icon: "database", norm: { x: 0.78, y: 0.20, w: 0.18, h: 0.55 } },
@@ -374,6 +442,8 @@ export default [
         { from: "claims", to: "feedback" },
         { from: "paper", to: "llm" },
         { from: "folder", to: "llm" },
+        { from: "standard", to: "claims" },
+        { from: "standard", to: "llm" },
         { from: "llm", to: "dataset" },
         { from: "dataset", to: "feedback" },
         { from: "feedback", to: "llm" },
@@ -470,6 +540,7 @@ export default [
         { id: "paper", label: "Paper", icon: "paper", norm: { x: 0.02, y: 0.05, w: 0.15, h: 0.38 } },
         { id: "folder", label: "Data", icon: "folder", norm: { x: 0.02, y: 0.57, w: 0.15, h: 0.38 } },
         { id: "claims", label: "LLM", subtitle: "claims.py", icon: "gear", norm: { x: 0.28, y: 0.0, w: 0.15, h: 0.35 }, highlight: true },
+        { id: "standard", label: "Dataset Standard", norm: { x: 0.31, y: 0.38, w: 0.12, h: 0.20 } },
         { id: "feedback", label: "Feedback", icon: "feedback", norm: { x: 0.50, y: 0.0, w: 0.15, h: 0.35 } },
         { id: "llm", label: "LLM", subtitle: "build_script.py", icon: "gear", norm: { x: 0.38, y: 0.62, w: 0.15, h: 0.35 } },
         { id: "dataset", label: "Standardized Dataset", icon: "database", norm: { x: 0.78, y: 0.20, w: 0.18, h: 0.55 } },
@@ -479,6 +550,8 @@ export default [
         { from: "claims", to: "feedback" },
         { from: "paper", to: "llm" },
         { from: "folder", to: "llm" },
+        { from: "standard", to: "claims" },
+        { from: "standard", to: "llm" },
         { from: "llm", to: "dataset" },
         { from: "dataset", to: "feedback" },
         { from: "feedback", to: "llm" },

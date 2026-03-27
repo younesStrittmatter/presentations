@@ -1653,7 +1653,35 @@ export function drawComicTableLayout(
     titleStyle ? { ...titleStyle, align: "center" } : { align: "center" }
   );
 
-  const contentTop = innerTop + titlePx * 1.12 + pad * 0.35;
+  let subtitleBandH = 0;
+  if (scene.subtitle) {
+    const subFontPx = Math.max(14, Math.round(Math.min(w, h) * 0.032));
+    const subPadY = pad * 0.25;
+    const subBoxY = innerTop + titlePx * 1.05 + pad * 0.2;
+    const subBoxW = innerW * 0.72;
+    const subBoxX = innerLeft + (innerW - subBoxW) * 0.5;
+    subtitleBandH = subFontPx * 1.6 + subPadY * 2;
+
+    ctx.fillStyle = R.halo;
+    ctx.strokeStyle = ink;
+    ctx.lineWidth = Math.max(2, borderW * 0.3);
+    if (typeof ctx.roundRect === "function") {
+      ctx.beginPath();
+      ctx.roundRect(subBoxX, subBoxY, subBoxW, subtitleBandH, 6);
+      ctx.fill();
+      ctx.stroke();
+    } else {
+      ctx.fillRect(subBoxX, subBoxY, subBoxW, subtitleBandH);
+      ctx.strokeRect(subBoxX, subBoxY, subBoxW, subtitleBandH);
+    }
+    ctx.font = `italic 500 ${subFontPx}px ${retroComicCoverBodyFontStack}`;
+    ctx.fillStyle = ink;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(scene.subtitle, subBoxX + subBoxW * 0.5, subBoxY + subtitleBandH * 0.5);
+  }
+
+  const contentTop = innerTop + titlePx * 1.12 + pad * 0.35 + subtitleBandH;
   const contentBottom = innerTop + innerPanelH - pad * 0.28;
   const contentH = Math.max(100, contentBottom - contentTop);
 
@@ -1749,7 +1777,35 @@ export function drawComicBulletBoxLayout(
     titleStyle ? { ...titleStyle, align: "center" } : { align: "center" }
   );
 
-  const contentTop = innerTop + titlePx * 1.12 + pad * 0.35;
+  let bulletSubH = 0;
+  if (scene.subtitle) {
+    const subFontPx = Math.max(14, Math.round(Math.min(w, h) * 0.032));
+    const subPadY = pad * 0.25;
+    const subBoxY = innerTop + titlePx * 1.05 + pad * 0.2;
+    const subBoxW = innerW * 0.72;
+    const subBoxX = innerLeft + (innerW - subBoxW) * 0.5;
+    bulletSubH = subFontPx * 1.6 + subPadY * 2;
+
+    ctx.fillStyle = R.halo;
+    ctx.strokeStyle = ink;
+    ctx.lineWidth = Math.max(2, borderW * 0.3);
+    if (typeof ctx.roundRect === "function") {
+      ctx.beginPath();
+      ctx.roundRect(subBoxX, subBoxY, subBoxW, bulletSubH, 6);
+      ctx.fill();
+      ctx.stroke();
+    } else {
+      ctx.fillRect(subBoxX, subBoxY, subBoxW, bulletSubH);
+      ctx.strokeRect(subBoxX, subBoxY, subBoxW, bulletSubH);
+    }
+    ctx.font = `italic 500 ${subFontPx}px ${retroComicCoverBodyFontStack}`;
+    ctx.fillStyle = ink;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(scene.subtitle, subBoxX + subBoxW * 0.5, subBoxY + bulletSubH * 0.5);
+  }
+
+  const contentTop = innerTop + titlePx * 1.12 + pad * 0.35 + bulletSubH;
   const contentBottom = innerTop + innerPanelH - pad * 0.28;
   const contentH = Math.max(100, contentBottom - contentTop);
 
