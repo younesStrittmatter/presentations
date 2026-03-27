@@ -64,7 +64,12 @@ export type ComicNarrationMeta = {
   }[];
   /** Draw a comic-style lightbulb at the given content-norm position. */
   lightbulb?: { x: number; y: number; size: number };
+  /** Procedural illustrations drawn on top. */
+  drawables?: ComicDrawable[];
 };
+
+export type ComicDrawable =
+  | { kind: "paperWithMagnifier"; norm: { x: number; y: number; w: number; h: number } };
 
 type PanelImgEntry = {
   status: "loading" | "ready" | "error";
@@ -879,6 +884,155 @@ function drawThoughtBubble(
   ctx.restore();
 }
 
+/** Stylized paper document with a magnifying glass over it. */
+function drawPaperWithMagnifier(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  w: number,
+  h: number,
+  ink: string,
+): void {
+  const lw = Math.max(2, Math.min(w, h) * 0.018);
+
+  // Paper
+  const pw = w * 0.65;
+  const ph = h * 0.85;
+  const px = x + w * 0.05;
+  const py = y + h * 0.05;
+  const fold = Math.min(pw, ph) * 0.14;
+
+  ctx.save();
+
+  // Paper shadow
+  ctx.fillStyle = "rgba(0,0,0,0.08)";
+  ctx.beginPath();
+  ctx.moveTo(px + 4, py + 4);
+  ctx.lineTo(px + pw - fold + 4, py + 4);
+  ctx.lineTo(px + pw + 4, py + fold + 4);
+  ctx.lineTo(px + pw + 4, py + ph + 4);
+  ctx.lineTo(px + 4, py + ph + 4);
+  ctx.closePath();
+  ctx.fill();
+
+  // Paper body
+  ctx.beginPath();
+  ctx.moveTo(px, py);
+  ctx.lineTo(px + pw - fold, py);
+  ctx.lineTo(px + pw, py + fold);
+  ctx.lineTo(px + pw, py + ph);
+  ctx.lineTo(px, py + ph);
+  ctx.closePath();
+  ctx.fillStyle = "#fff8e7";
+  ctx.fill();
+  ctx.strokeStyle = ink;
+  ctx.lineWidth = lw;
+  ctx.stroke();
+
+  // Fold
+  ctx.beginPath();
+  ctx.moveTo(px + pw - fold, py);
+  ctx.lineTo(px + pw - fold, py + fold);
+  ctx.lineTo(px + pw, py + fold);
+  ctx.closePath();
+  ctx.fillStyle = "#efe4cc";
+  ctx.fill();
+  ctx.stroke();
+
+  // Text lines on paper
+  ctx.strokeStyle = "#ccc";
+  ctx.lineWidth = Math.max(1, lw * 0.5);
+  const lineMargin = pw * 0.12;
+  for (let i = 0; i < 7; i++) {
+    const ly = py + ph * 0.18 + i * ph * 0.1;
+    const lineW = pw - lineMargin * 2 - (i % 3 === 2 ? pw * 0.25 : 0);
+    if (ly < py + ph - ph * 0.08) {
+      ctx.beginPath();
+      ctx.moveTo(px + lineMargin, ly);
+      ctx.lineTo(px + lineMargin + lineW, ly);
+      ctx.stroke();
+    }
+  }
+
+  // Highlighted lines (yellow marker effect)
+  ctx.fillStyle = "rgba(255,235,59,0.35)";
+  for (let i = 2; i < 5; i++) {
+    const ly = py + ph * 0.18 + i * ph * 0.1 - ph * 0.025;
+    const lineW = pw - lineMargin * 2 - (i % 3 === 2 ? pw * 0.25 : 0);
+    if (ly < py + ph - ph * 0.08) {
+      ctx.fillRect(px + lineMargin - 2, ly, lineW + 4, ph * 0.04);
+    }
+  }
+
+  // Magnifying glass
+  const magR = Math.min(w, h) * 0.22;
+  const magCx = x + w * 0.62;
+  const magCy = y + h * 0.55;
+  const handleLen = magR * 0.9;
+  const handleAngle = Math.PI * 0.25;
+
+  // Glass lens (translucent blue tint)
+  ctx.beginPath();
+  ctx.arc(magCx, magCy, magR, 0, Math.PI * 2);
+  ctx.fillStyle = "rgba(200,225,255,0.3)";
+  ctx.fill();
+  ctx.strokeStyle = ink;
+  ctx.lineWidth = lw * 2.5;
+  ctx.stroke();
+
+  // Rim highlight
+  ctx.beginPath();
+  ctx.arc(magCx, magCy, magR * 0.88, -Math.PI * 0.6, -Math.PI * 0.15);
+  ctx.strokeStyle = "rgba(255,255,255,0.5)";
+  ctx.lineWidth = lw * 1.5;
+  ctx.stroke();
+
+  // Lens shine
+  ctx.beginPath();
+  ctx.arc(magCx - magR * 0.25, magCy - magR * 0.3, magR * 0.18, 0, Math.PI * 2);
+  ctx.fillStyle = "rgba(255,255,255,0.5)";
+  ctx.fill();
+
+  // Handle
+  const hx1 = magCx + Math.cos(handleAngle) * magR;
+  const hy1 = magCy + Math.sin(handleAngle) * magR;
+  const hx2 = hx1 + Math.cos(handleAngle) * handleLen;
+  const hy2 = hy1 + Math.sin(handleAngle) * handleLen;
+  ctx.beginPath();
+  ctx.moveTo(hx1, hy1);
+  ctx.lineTo(hx2, hy2);
+  ctx.strokeStyle = "#8d6e63";
+  ctx.lineWidth = lw * 3.5;
+  ctx.lineCap = "round";
+  ctx.stroke();
+  ctx.strokeStyle = ink;
+  ctx.lineWidth = lw * 1.2;
+  ctx.stroke();
+
+  ctx.restore();
+}
+
+function drawComicDrawable(
+  ctx: CanvasRenderingContext2D,
+  drawable: ComicDrawable,
+  innerLeft: number,
+  contentTop: number,
+  innerW: number,
+  contentH: number,
+  ink: string,
+): void {
+  const nx = innerLeft + drawable.norm.x * innerW;
+  const ny = contentTop + drawable.norm.y * contentH;
+  const nw = drawable.norm.w * innerW;
+  const nh = drawable.norm.h * contentH;
+
+  switch (drawable.kind) {
+    case "paperWithMagnifier":
+      drawPaperWithMagnifier(ctx, nx, ny, nw, nh, ink);
+      break;
+  }
+}
+
 /** Comic-style lightbulb with rays — drawn procedurally, no asset needed. */
 function drawComicLightbulb(
   ctx: CanvasRenderingContext2D,
@@ -1118,6 +1272,10 @@ export function drawComicNarrationLayout(
     const lby = contentTop + lb.y * contentH;
     const lbSize = lb.size * Math.min(innerW, contentH);
     drawComicLightbulb(ctx, lbx, lby, lbSize, ink);
+  }
+
+  for (const d of meta.drawables ?? []) {
+    drawComicDrawable(ctx, d, innerLeft, contentTop, innerW, contentH, ink);
   }
 
   ctx.restore();

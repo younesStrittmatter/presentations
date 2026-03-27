@@ -359,6 +359,49 @@ export default [
     canvasStyle: "retro-comic",
   },
   {
+    title: "How does it work?",
+    comicFlowDiagram: {
+      nodes: [
+        // Column 1: Input
+        { id: "paper", label: "Paper", icon: "paper", norm: { x: 0.02, y: 0.05, w: 0.15, h: 0.38 } },
+        { id: "folder", label: "Data", icon: "folder", norm: { x: 0.02, y: 0.57, w: 0.15, h: 0.38 } },
+        // Column 2: Process
+        { id: "claims", label: "LLM", subtitle: "claims.py", icon: "gear", norm: { x: 0.28, y: 0.0, w: 0.15, h: 0.35 } },
+        { id: "feedback", label: "Feedback", icon: "feedback", norm: { x: 0.50, y: 0.0, w: 0.15, h: 0.35 } },
+        { id: "llm", label: "LLM", subtitle: "build_script.py", icon: "gear", norm: { x: 0.38, y: 0.62, w: 0.15, h: 0.35 } },
+        // Column 3: Output
+        { id: "dataset", label: "Standardized Dataset", icon: "database", norm: { x: 0.78, y: 0.20, w: 0.18, h: 0.55 } },
+      ],
+      edges: [
+        { from: "paper", to: "claims" },
+        { from: "claims", to: "feedback" },
+        { from: "paper", to: "llm" },
+        { from: "folder", to: "llm" },
+        { from: "llm", to: "dataset" },
+        { from: "dataset", to: "feedback" },
+        { from: "feedback", to: "llm" },
+      ],
+    },
+    paper,
+    ink,
+    canvasStyle: "retro-comic",
+  },
+  {
+    title: "Data Detective — But Automated",
+    comicNarration: {
+      narration: "Let's make some claims.",
+      figureSrc: dataDetectiveBatmanAsset,
+      figureNorm: { x: 0.03, y: 0.08, w: 0.38, h: 0.84 },
+      narrationBoxNorm: { x: 0.08, y: 0.78, w: 0.30, h: 0.14 },
+      drawables: [
+        { kind: "paperWithMagnifier", norm: { x: 0.50, y: 0.08, w: 0.46, h: 0.80 } },
+      ],
+    },
+    paper,
+    ink,
+    canvasStyle: "retro-comic",
+  },
+  {
     title: "MOTIVATION",
     bullets: [
       "Human experiments produce rich, heterogeneous data",
