@@ -9,7 +9,8 @@ const deck = parseDeckArg(argv);
 const slidesPath = assertDeckExists(deck);
 const basePrefix = resolveBasePrefix(argv);
 
-const outputDir = path.join(ROOT, "dist", deck);
+const segments = deck.split("/").filter(Boolean);
+const outputDir = path.join(ROOT, "dist", ...segments);
 fs.mkdirSync(outputDir, { recursive: true });
 
 const args = ["slidev", "build", slidesPath, "--out", outputDir, "--base", `${basePrefix}/${deck}/`];

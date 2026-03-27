@@ -1,7 +1,7 @@
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
-import { ROOT, listDecks } from "./lib.mjs";
+import { ROOT, listDecks, deckGroupKey } from "./lib.mjs";
 
 const basePrefix = process.env.BASE_PREFIX || "";
 const decks = listDecks();
@@ -26,29 +26,83 @@ for (const deck of decks) {
 }
 
 const deckCards = decks.map((slug) => readDeckCard(slug));
+const visibleCards = deckCards.filter((card) => !card.hidden);
 const feedbackConfig = readFeedbackConfig();
-const indexHtml = renderIndex(deckCards, feedbackConfig);
+const indexHtml = renderIndexGrouped(visibleCards, feedbackConfig);
 const indexPath = path.join(ROOT, "dist", "index.html");
 fs.mkdirSync(path.dirname(indexPath), { recursive: true });
 fs.writeFileSync(indexPath, indexHtml, "utf8");
 console.log("\nGenerated dist/index.html");
 
-function renderIndex(cards, feedback) {
-  const list = cards
-    .map(
-      (card, idx) => `<article class="card">
+function renderIndexGrouped(cards, feedback) {
+  if (!cards.length) {
+    return renderIndexShell(
+      `<p class="sub">No public talks in the gallery yet. Decks with <code>hidden: true</code> in <code>presentation.config.json</code> stay in the repo but are not listed here.</p>`
+    );
+  }
+  const sorted = [...cards].sort((a, b) => a.slug.localeCompare(b.slug));
+  const groups = new Map();
+  for (const card of sorted) {
+    const key = deckGroupKey(card.slug);
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(card);
+  }
+  const order = [...groups.keys()].sort((a, b) => {
+    if (a === "") return -1;
+    if (b === "") return 1;
+    return a.localeCompare(b);
+  });
+
+  const sections = order
+    .map((key) => {
+      const items = groups.get(key);
+      const title =
+        key === ""
+          ? "Standalone talks"
+          : breadcrumbTitle(key);
+      const grid = items
+        .map(
+          (card, idx) => `<article class="card">
           <span class="chip">#${String(idx + 1).padStart(2, "0")}</span>
+          <p class="meta path">${escapeHtml(card.slug)}</p>
           <h2>${escapeHtml(card.title)}</h2>
+          ${card.subtitle ? `<p class="meta blurb">${escapeHtml(card.subtitle)}</p>` : ""}
           <p class="meta">${escapeHtml(card.presentedAt || "Date TBD")} · ${escapeHtml(card.presentedWhere || "Location TBD")}</p>
           <p class="meta">${escapeHtml(card.occasion || "Occasion TBD")}</p>
           <div class="actions">
-            <a class="btn" href="./${card.slug}/">Open</a>
+            <a class="btn" href="./${encodePathForHref(card.slug)}/">Open</a>
             <a class="btn subtle" href="${buildFeedbackUrl(card, feedback)}" target="_blank" rel="noopener noreferrer">Add feedback</a>
           </div>
         </article>`
-    )
+        )
+        .join("\n");
+      return `<section class="series-block">
+      <h2 class="series-title">${escapeHtml(title)}</h2>
+      <div class="grid">
+${grid}
+      </div>
+    </section>`;
+    })
     .join("\n");
 
+  return renderIndexShell(sections);
+}
+
+function encodePathForHref(slug) {
+  return String(slug)
+    .split("/")
+    .map((seg) => encodeURIComponent(seg))
+    .join("/");
+}
+
+function breadcrumbTitle(groupKey) {
+  return groupKey
+    .split("/")
+    .map((seg) => humanize(seg))
+    .join(" · ");
+}
+
+function renderIndexShell(sectionsHtml) {
   return `<!doctype html>
 <html lang="en">
   <head>
@@ -92,6 +146,27 @@ function renderIndex(cards, feedback) {
         margin: 1rem 0 2rem;
         color: #e8dcffcc;
         max-width: 48ch;
+      }
+      .series-block {
+        margin-bottom: 2.5rem;
+      }
+      .series-title {
+        font-family: "Cormorant Garamond", serif;
+        font-size: 1.45rem;
+        margin: 0 0 0.85rem;
+        color: #e8dcff;
+        font-weight: 600;
+      }
+      .path {
+        font-size: 0.78rem;
+        color: #9a8bc4;
+        letter-spacing: 0.02em;
+      }
+      .blurb {
+        margin: 0.35rem 0 0;
+        color: #d4c8ffcc;
+        font-size: 0.9rem;
+        line-height: 1.35;
       }
       .grid {
         display: grid;
@@ -155,24 +230,25 @@ function renderIndex(cards, feedback) {
     <main>
       <h1>Presentation Gallery</h1>
       <p class="sub">A curated collection of visual talks, interactive demos, and computational storytelling.</p>
-      <section class="grid">
-${list}
-      </section>
+${sectionsHtml}
     </main>
   </body>
 </html>`;
 }
 
 function readDeckCard(slug) {
+  const talkSeg = slug.includes("/") ? slug.split("/").pop() : slug;
   const fallback = {
     slug,
-    title: humanize(slug),
-    titleShort: slug,
+    title: humanize(talkSeg || slug),
+    titleShort: slug.replace(/\//g, "-"),
     presentedAt: "",
     presentedWhere: "",
-    occasion: ""
+    occasion: "",
+    hidden: false,
+    subtitle: ""
   };
-  const configPath = path.join(ROOT, "presentations", slug, "presentation.config.json");
+  const configPath = path.join(ROOT, "presentations", ...slug.split("/"), "presentation.config.json");
   if (!fs.existsSync(configPath)) {
     return fallback;
   }
@@ -182,10 +258,12 @@ function readDeckCard(slug) {
     return {
       slug,
       title: parsed.title || fallback.title,
-      titleShort: parsed.titleShort || slug,
+      titleShort: parsed.titleShort || fallback.titleShort,
       presentedAt: parsed.presentedAt || "",
       presentedWhere: parsed.presentedWhere || "",
-      occasion: parsed.occasion || ""
+      occasion: parsed.occasion || "",
+      hidden: Boolean(parsed.hidden),
+      subtitle: typeof parsed.subtitle === "string" ? parsed.subtitle : ""
     };
   } catch {
     return fallback;

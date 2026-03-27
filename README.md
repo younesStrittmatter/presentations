@@ -12,8 +12,10 @@ Markdown-first presentation workspace powered by Slidev, with reusable shared as
 ## Project layout
 
 - `engine/` shared styles/components and reusable content blocks.
-- `presentations/<slug>/` each talk with its own slides, assets, demos, and notebooks.
-- `scripts/new-presentation.mjs` generator for new talks.
+- `presentations/` holds talks. A talk is any folder that contains `slides.md`.
+  - **Flat:** `presentations/my-talk/`
+  - **Nested (series / class / part):** `presentations/class-1/part-1/lecture-intro/` — use `/` in the deck id (see `presentations/README.md`).
+- `scripts/new-presentation.mjs` generator for new talks (`--under` for nested paths).
 
 ## Quick start
 
@@ -21,6 +23,10 @@ Markdown-first presentation workspace powered by Slidev, with reusable shared as
 npm install
 npm run new:presentation -- --slug my-talk --title "My Talk"
 npm run dev -- --deck my-talk
+
+# Nested example (quote paths with slashes in the shell if needed)
+npm run new:presentation -- --under class-1/part-1 --slug intro --title "Part 1 intro"
+npm run dev -- --deck class-1/part-1/intro
 ```
 
 ### Della frictionless runner
@@ -35,7 +41,7 @@ Daily use:
 
 ```bash
 ./scripts/present.sh dev creative-computing-intro
-./scripts/present.sh new my-talk "My Talk" "my-talk"
+./scripts/present.sh new -- --slug my-talk --title "My Talk"
 ./scripts/present.sh build-all
 ```
 
@@ -55,7 +61,7 @@ npm run build:all
 
 For each talk:
 
-- put notebooks in `presentations/<slug>/notebooks/`
+- put notebooks in `presentations/<path-to-talk>/notebooks/`
 - link them from slides with direct download links
 - add "Open in Colab" buttons for runnable cloud notebooks
 
@@ -69,6 +75,8 @@ Every new presentation now includes:
   - `presentedAt`
   - `presentedWhere`
   - `occasion`
+  - `hidden` (optional, default `false`) — if `true`, the deck is still built and stays in the repo but does **not** appear on the gallery page
+  - `subtitle` (optional) — short line under the title on the title slide and on gallery cards when set
 - `feedback.md` as the default final slide
 - shared feedback defaults in `engine/feedback.config.json`
 
@@ -92,5 +100,5 @@ See `FEEDBACK_SETUP.md` for one-time setup of anonymous form -> auto-created Git
 The included workflow builds every deck and deploys to Pages.
 Each deck is published at:
 
-- `https://<username>.github.io/<repo>/<slug>/`
+- `https://<username>.github.io/<repo>/<deck-path>/` (nested paths keep slashes, e.g. `.../class-1/part-1/intro/`)
 - Gallery landing page: `https://<username>.github.io/<repo>/`

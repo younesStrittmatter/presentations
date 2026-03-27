@@ -6,11 +6,12 @@ import { PRESENTATIONS_DIR, ensurePresentationsDir } from "./lib.mjs";
 const argv = minimist(process.argv.slice(2));
 const slug = String(argv.slug || argv.s || "").trim();
 const title = String(argv.title || argv.t || "").trim();
-const titleShort = String(argv["title-short"] || argv.titleShort || slug).trim();
+const underRaw = String(argv.under || argv.u || "").trim();
+const under = underRaw ? normalizePathSegments(underRaw) : "";
 
 if (!slug || !title) {
   console.error(
-    'Usage: npm run new:presentation -- --slug my-talk --title "My Talk" [--title-short my-talk]'
+    'Usage: npm run new:presentation -- --slug my-talk --title "My Talk" [--under class-1/part-1] [--title-short id]'
   );
   process.exit(1);
 }
@@ -20,18 +21,29 @@ if (!/^[a-z0-9-]+$/.test(slug)) {
   process.exit(1);
 }
 
-ensurePresentationsDir();
-const deckDir = path.join(PRESENTATIONS_DIR, slug);
-if (fs.existsSync(deckDir)) {
-  console.error(`Deck "${slug}" already exists at presentations/${slug}.`);
+if (under && !under.split("/").every((seg) => /^[a-z0-9-]+$/.test(seg))) {
+  console.error("--under segments must be lowercase letters, numbers, and dashes only.");
   process.exit(1);
 }
 
+const deckRel = under ? `${under}/${slug}` : slug;
+const titleShortDefault = deckRel.replace(/\//g, "-");
+const titleShort = String(argv["title-short"] || argv.titleShort || titleShortDefault).trim();
+
+ensurePresentationsDir();
+const deckDir = path.join(PRESENTATIONS_DIR, ...deckRel.split("/"));
+if (fs.existsSync(deckDir)) {
+  console.error(`Deck already exists at presentations/${deckRel}.`);
+  process.exit(1);
+}
+
+const engineUp = "../".repeat(deckRel.split("/").length + 1);
+
 const files = [
-  ["slides.md", slidesTemplate(title, slug)],
+  ["slides.md", slidesTemplate(title, deckRel, engineUp)],
   ["presentation.config.json", configTemplate(title, titleShort)],
-  ["feedback.md", feedbackTemplate()],
-  ["README.md", readmeTemplate(title, slug)],
+  ["feedback.md", feedbackTemplate(engineUp)],
+  ["README.md", readmeTemplate(title, deckRel)],
   ["notebooks/README.md", notebookTemplate()],
   ["demos/README.md", demosTemplate()],
   ["assets/.gitkeep", ""]
@@ -43,10 +55,17 @@ for (const [relativeFile, content] of files) {
   fs.writeFileSync(outPath, content, "utf8");
 }
 
-console.log(`Created deck: presentations/${slug}`);
-console.log(`Run: npm run dev -- --deck ${slug}`);
+console.log(`Created deck: presentations/${deckRel}`);
+console.log(`Run: npm run dev -- --deck ${deckRel}`);
 
-function slidesTemplate(deckTitle, deckSlug) {
+function normalizePathSegments(p) {
+  return p
+    .replace(/\\/g, "/")
+    .replace(/^\/+|\/+$/g, "")
+    .replace(/\/+/g, "/");
+}
+
+function slidesTemplate(deckTitle, deckSlug, engineUp) {
   return `---
 theme: default
 title: ${deckTitle}
@@ -110,7 +129,7 @@ src: ./feedback.md
 ---
 
 <style>
-@import url("../../engine/styles/artsy.css");
+@import url("${engineUp}engine/styles/artsy.css");
 </style>
 `;
 }
@@ -122,14 +141,16 @@ function configTemplate(deckTitle, deckTitleShort) {
       titleShort: deckTitleShort,
       presentedAt: "",
       presentedWhere: "",
-      occasion: ""
+      occasion: "",
+      hidden: false,
+      subtitle: ""
     },
     null,
     2
   );
 }
 
-function feedbackTemplate() {
+function feedbackTemplate(engineUp) {
   return `---
 layout: center
 class: text-center
@@ -137,13 +158,13 @@ class: text-center
 
 <script setup>
 import config from "./presentation.config.json";
-import feedbackConfig from "../../engine/feedback.config.json";
+import feedbackConfig from "${engineUp}engine/feedback.config.json";
 
 const presentation = config.titleShort || config.title;
 const encodedPresentation = encodeURIComponent(presentation);
 const formBase = (feedbackConfig.feedbackFormUrl || "https://tally.so/r/REPLACE_WITH_YOUR_FORM").trim();
 const separator = formBase.includes("?") ? "&" : "?";
-const fieldKey = encodeURIComponent(feedbackConfig.feedbackFieldKey || "presentation-title");
+const fieldKey = encodeURIComponent(feedbackConfig.feedbackFieldKey || "presentation");
 const anonymousUrl = \`\${formBase}\${separator}\${fieldKey}=\${encodedPresentation}\`;
 const repo = feedbackConfig.githubRepo || "younesStrittmatter/presentations";
 const issuesUrl = \`https://github.com/\${repo}/issues\`;

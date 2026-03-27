@@ -38,14 +38,17 @@ activate_env_if_needed() {
 usage() {
   cat <<'EOF'
 Usage:
-  ./scripts/present.sh dev <deck-slug>
-  ./scripts/present.sh build <deck-slug>
+  ./scripts/present.sh dev <deck-path>
+  ./scripts/present.sh build <deck-path>
   ./scripts/present.sh build-all
-  ./scripts/present.sh new <slug> "<Title>" ["title-short"]
+  ./scripts/present.sh new -- [args passed to new:presentation]
+
+Deck path can be nested, e.g. class-1/part-1/my-talk
 
 Examples:
   ./scripts/present.sh dev creative-computing-intro
-  ./scripts/present.sh new ai-safety "AI Safety 101" "ai-safety"
+  ./scripts/present.sh dev class-1/part-1/intro
+  ./scripts/present.sh new -- --under class-1/part-1 --slug intro --title "Part 1 intro"
 EOF
 }
 
@@ -74,15 +77,9 @@ main() {
       npm run build:all
       ;;
     new)
-      local slug="${2:-}"
-      local title="${3:-}"
-      local short="${4:-}"
-      [[ -n "${slug}" && -n "${title}" ]] || { echo "Missing slug/title."; usage; exit 1; }
-      if [[ -n "${short}" ]]; then
-        npm run new:presentation -- --slug "${slug}" --title "${title}" --title-short "${short}"
-      else
-        npm run new:presentation -- --slug "${slug}" --title "${title}"
-      fi
+      shift
+      [[ $# -gt 0 ]] || { echo "Missing arguments. Example: ./scripts/present.sh new -- --slug talk --title \"My Talk\""; usage; exit 1; }
+      npm run new:presentation -- "$@"
       ;;
     *)
       echo "Unknown command: ${command}"
