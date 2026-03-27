@@ -2,8 +2,11 @@
 /**
  * Orchestration: offscreen 2D (see engine/canvas/slideScene2d.ts) → texture →
  * post shader (engine/canvas/postprocessHalftone.ts), resize debounce, rAF.
+ *
+ * Only acquires a WebGL context when the slide is visible (IntersectionObserver)
+ * to avoid hitting the browser's ~16 active context limit.
  */
-import { nextTick, onActivated, onDeactivated, onMounted, onUnmounted, ref, watch } from "vue";
+import { nextTick, onMounted, onUnmounted, ref, watch } from "vue";
 import {
   FULLSCREEN_QUAD_ATTR,
   fullscreenQuadVertex,
@@ -39,9 +42,12 @@ let offscreen;
 let offCtx;
 let resizeT = 0;
 let resizeObserver;
+let visibilityObserver;
 let lastCw = 0;
 let lastCh = 0;
 let sceneDirty = false;
+let visible = false;
+let fontsReady = false;
 
 function preloadSceneAssets(scene) {
   return Promise.all([
@@ -164,7 +170,7 @@ function startLoop() {
 
 function initGL() {
   const el = viewRef.value;
-  if (!el) return;
+  if (!el || gl) return;
 
   const canvas = document.createElement("canvas");
   canvas.style.display = "block";
@@ -216,13 +222,11 @@ function initGL() {
   sceneDirty = true;
 }
 
-function teardown() {
+function teardownGL() {
   cancelAnimationFrame(raf);
   raf = 0;
   clearTimeout(resizeT);
   resizeT = 0;
-  resizeObserver?.disconnect();
-  resizeObserver = null;
   lastCw = 0;
   lastCh = 0;
   if (gl && tex) {
@@ -241,6 +245,38 @@ function teardown() {
   if (viewRef.value) viewRef.value.innerHTML = "";
 }
 
+async function activate() {
+  if (gl) return;
+  if (!fontsReady) {
+    await ensureCanvasDisplayFonts();
+    fontsReady = true;
+  }
+  await preloadSceneAssets(props.scene);
+  initGL();
+  startLoop();
+  requestAnimationFrame(() => requestAnimationFrame(commitResize));
+}
+
+function deactivate() {
+  teardownGL();
+}
+
+function onVisibilityChange(entries) {
+  for (const entry of entries) {
+    if (entry.isIntersecting) {
+      if (!visible) {
+        visible = true;
+        activate();
+      }
+    } else {
+      if (visible) {
+        visible = false;
+        deactivate();
+      }
+    }
+  }
+}
+
 watch(
   () => props.scene,
   async () => {
@@ -253,48 +289,44 @@ watch(
       });
       return;
     }
-    queueCommitResize();
+    if (visible) queueCommitResize();
   },
   { flush: "post" }
 );
 
 onMounted(async () => {
   await nextTick();
-  await ensureCanvasDisplayFonts();
-  await preloadSceneAssets(props.scene);
-  initGL();
-  startLoop();
+
+  const el = viewRef.value;
+  if (!el) return;
 
   window.addEventListener("resize", queueCommitResize);
 
-  const el = viewRef.value;
-  if (el && typeof ResizeObserver !== "undefined") {
-    resizeObserver = new ResizeObserver(() => queueCommitResize());
+  if (typeof ResizeObserver !== "undefined") {
+    resizeObserver = new ResizeObserver(() => {
+      if (visible && gl) queueCommitResize();
+    });
     resizeObserver.observe(el);
   }
 
-  requestAnimationFrame(() => {
-    requestAnimationFrame(commitResize);
-  });
-});
-
-onActivated(async () => {
-  if (!gl) {
-    await ensureCanvasDisplayFonts();
-    await preloadSceneAssets(props.scene);
-    initGL();
-    startLoop();
-    requestAnimationFrame(() => requestAnimationFrame(commitResize));
+  if (typeof IntersectionObserver !== "undefined") {
+    visibilityObserver = new IntersectionObserver(onVisibilityChange, {
+      threshold: 0.05,
+    });
+    visibilityObserver.observe(el);
+  } else {
+    visible = true;
+    await activate();
   }
-});
-
-onDeactivated(() => {
-  teardown();
 });
 
 onUnmounted(() => {
   window.removeEventListener("resize", queueCommitResize);
-  teardown();
+  resizeObserver?.disconnect();
+  resizeObserver = null;
+  visibilityObserver?.disconnect();
+  visibilityObserver = null;
+  teardownGL();
 });
 </script>
 
