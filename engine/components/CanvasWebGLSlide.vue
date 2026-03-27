@@ -141,6 +141,10 @@ function drawFrame() {
     return;
   }
 
+  if (props.scene?.animated && offscreen && offCtx && tex) {
+    layoutAndDraw2D(props.scene);
+  }
+
   gl.useProgram(program);
   gl.uniform2f(locResolution, gl.canvas.width, gl.canvas.height);
   gl.uniform1f(locScale, getCanvasStyle(props.scene?.canvasStyle).halftoneScale);

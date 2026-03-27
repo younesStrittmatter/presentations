@@ -31,7 +31,10 @@ export type ComicPanelMeta = {
 
 /** Thought cloud + dot trail; `boxNorm` / `tailTip` use the same content coords as comic bubbles. */
 export type ComicNarrationThinkBubble = {
-  text: string;
+  /** Text shown inside the cloud (ignored when `imageSrc` is set). */
+  text?: string;
+  /** When set, draws this image inside the cloud instead of text. */
+  imageSrc?: string;
   boxNorm: { x: number; y: number; w: number; h: number };
   tailTip: { x: number; y: number };
 };
@@ -52,6 +55,15 @@ export type ComicNarrationMeta = {
    */
   figureNorm?: { x: number; y: number; w: number; h: number };
   thinkBubble?: ComicNarrationThinkBubble;
+  /** Optional multiple thought bubbles on the narration slide. */
+  thinkBubbles?: ComicNarrationThinkBubble[];
+  /** Free-floating images drawn on top (e.g. lightbulb icon). Same content-norm coords. */
+  overlayImages?: {
+    src: string;
+    norm: { x: number; y: number; w: number; h: number };
+  }[];
+  /** Draw a comic-style lightbulb at the given content-norm position. */
+  lightbulb?: { x: number; y: number; size: number };
 };
 
 type PanelImgEntry = {
@@ -100,8 +112,21 @@ export function preloadComicPanelImages(panel?: ComicPanelMeta | null): Promise<
 }
 
 export function preloadComicNarrationImages(meta?: ComicNarrationMeta | null): Promise<void> {
-  if (!meta?.figureSrc) return Promise.resolve();
-  return ensurePanelImageEntry(meta.figureSrc).promise;
+  if (!meta) return Promise.resolve();
+  const urls: string[] = [];
+  if (meta.figureSrc) urls.push(meta.figureSrc);
+  const allBubbles = [
+    ...(meta.thinkBubbles ?? []),
+    ...(meta.thinkBubble ? [meta.thinkBubble] : []),
+  ];
+  for (const b of allBubbles) {
+    if (b.imageSrc) urls.push(b.imageSrc);
+  }
+  for (const oi of meta.overlayImages ?? []) {
+    urls.push(oi.src);
+  }
+  if (!urls.length) return Promise.resolve();
+  return Promise.all(urls.map((src) => ensurePanelImageEntry(src).promise)).then(() => {});
 }
 
 function getPanelImage(src: string): HTMLImageElement | null {
@@ -745,6 +770,34 @@ function drawThoughtInteriorText(
   ctx.restore();
 }
 
+function drawThoughtInteriorImage(
+  ctx: CanvasRenderingContext2D,
+  img: HTMLImageElement,
+  cx: number,
+  cy: number,
+  rx: number,
+  ry: number
+): void {
+  ctx.save();
+  const clipRx = rx * 0.72;
+  const clipRy = ry * 0.68;
+  ctx.beginPath();
+  if (typeof ctx.ellipse === "function") {
+    ctx.ellipse(cx, cy, clipRx, clipRy, 0, 0, Math.PI * 2);
+  } else {
+    ctx.rect(cx - clipRx, cy - clipRy, clipRx * 2, clipRy * 2);
+  }
+  ctx.clip();
+
+  const fitW = clipRx * 1.7;
+  const fitH = clipRy * 1.7;
+  const scale = Math.min(fitW / img.width, fitH / img.height);
+  const dw = img.width * scale;
+  const dh = img.height * scale;
+  ctx.drawImage(img, cx - dw * 0.5, cy - dh * 0.5, dw, dh);
+  ctx.restore();
+}
+
 /**
  * Classic comic thought bubble: overlapping circles (visible round bumps with concave
  * pinches between them) + italic text + trail of shrinking mini-clouds toward the
@@ -761,7 +814,8 @@ function drawThoughtBubble(
   ink: string,
   _seed: number,
   R: typeof retroComicRoot,
-  fontPx: number
+  fontPx: number,
+  interiorImg?: HTMLImageElement | null
 ): void {
   const cx = bx + bw * 0.5;
   const cy = by + bh * 0.46;
@@ -783,7 +837,12 @@ function drawThoughtBubble(
 
   ctx.save();
   drawPuffCloud(ctx, puffs, grd, ink, lw);
-  drawThoughtInteriorText(ctx, thoughtText, cx, cy, rx, ry, ink, fontPx, R);
+
+  if (interiorImg) {
+    drawThoughtInteriorImage(ctx, interiorImg, cx, cy, rx, ry);
+  } else if (thoughtText) {
+    drawThoughtInteriorText(ctx, thoughtText, cx, cy, rx, ry, ink, fontPx, R);
+  }
 
   // Nearest puff edge toward the tail tip — attach trail there
   const tdx = tipPx[0] - cx;
@@ -816,6 +875,95 @@ function drawThoughtBubble(
     const miniPuffs = layoutMiniCloud(mx, my, sizes[i]!);
     drawPuffCloud(ctx, miniPuffs, R.halo, ink, Math.max(1.1, lw * 0.7));
   }
+
+  ctx.restore();
+}
+
+/** Comic-style lightbulb with rays — drawn procedurally, no asset needed. */
+function drawComicLightbulb(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  size: number,
+  ink: string,
+): void {
+  const r = size * 0.32;
+  const lw = Math.max(1.5, size * 0.028);
+
+  // Glow halo
+  ctx.save();
+  const glow = ctx.createRadialGradient(cx, cy - size * 0.08, r * 0.3, cx, cy - size * 0.08, r * 2.2);
+  glow.addColorStop(0, "rgba(255,230,80,0.45)");
+  glow.addColorStop(0.5, "rgba(255,220,60,0.15)");
+  glow.addColorStop(1, "rgba(255,220,60,0)");
+  ctx.fillStyle = glow;
+  ctx.beginPath();
+  ctx.arc(cx, cy - size * 0.08, r * 2.2, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Rays
+  const rayCount = 8;
+  const rayInner = r * 1.4;
+  const rayOuter = r * 2.0;
+  ctx.strokeStyle = "#f9c523";
+  ctx.lineWidth = lw * 1.6;
+  ctx.lineCap = "round";
+  for (let i = 0; i < rayCount; i++) {
+    const a = (i / rayCount) * Math.PI * 2 - Math.PI * 0.5;
+    ctx.beginPath();
+    ctx.moveTo(cx + Math.cos(a) * rayInner, cy - size * 0.08 + Math.sin(a) * rayInner);
+    ctx.lineTo(cx + Math.cos(a) * rayOuter, cy - size * 0.08 + Math.sin(a) * rayOuter);
+    ctx.stroke();
+  }
+
+  // Bulb (glass)
+  ctx.beginPath();
+  ctx.arc(cx, cy - size * 0.08, r, 0, Math.PI * 2);
+  ctx.fillStyle = "#ffe94e";
+  ctx.fill();
+  ctx.strokeStyle = ink;
+  ctx.lineWidth = lw;
+  ctx.stroke();
+
+  // Highlight
+  ctx.beginPath();
+  ctx.arc(cx - r * 0.28, cy - size * 0.08 - r * 0.22, r * 0.25, 0, Math.PI * 2);
+  ctx.fillStyle = "rgba(255,255,255,0.7)";
+  ctx.fill();
+
+  // Base / screw cap
+  const baseW = r * 0.7;
+  const baseH = r * 0.55;
+  const baseY = cy - size * 0.08 + r - lw;
+  ctx.fillStyle = "#888";
+  ctx.strokeStyle = ink;
+  ctx.lineWidth = lw;
+  ctx.beginPath();
+  ctx.rect(cx - baseW * 0.5, baseY, baseW, baseH);
+  ctx.fill();
+  ctx.stroke();
+  // Screw lines
+  for (let i = 1; i <= 2; i++) {
+    const ly = baseY + (i / 3) * baseH;
+    ctx.beginPath();
+    ctx.moveTo(cx - baseW * 0.5, ly);
+    ctx.lineTo(cx + baseW * 0.5, ly);
+    ctx.strokeStyle = ink;
+    ctx.lineWidth = lw * 0.7;
+    ctx.stroke();
+  }
+
+  // Tip
+  ctx.beginPath();
+  ctx.moveTo(cx - baseW * 0.3, baseY + baseH);
+  ctx.lineTo(cx + baseW * 0.3, baseY + baseH);
+  ctx.lineTo(cx, baseY + baseH + r * 0.3);
+  ctx.closePath();
+  ctx.fillStyle = "#666";
+  ctx.fill();
+  ctx.strokeStyle = ink;
+  ctx.lineWidth = lw;
+  ctx.stroke();
 
   ctx.restore();
 }
@@ -934,14 +1082,42 @@ export function drawComicNarrationLayout(
 
   drawNarrationCaptionBoxAutofit(ctx, meta.narration, ink, R, capFont, narrPlace);
 
-  const think = meta.thinkBubble;
-  if (think) {
+  const bubbles =
+    meta.thinkBubbles && meta.thinkBubbles.length > 0
+      ? meta.thinkBubbles
+      : meta.thinkBubble
+        ? [meta.thinkBubble]
+        : [];
+  for (let i = 0; i < bubbles.length; i++) {
+    const think = bubbles[i]!;
     const box = bubbleBoxFromNorm(innerLeft, contentTop, innerW, contentH, think.boxNorm);
     const tipPx: [number, number] = [
       innerLeft + think.tailTip.x * innerW,
       contentTop + think.tailTip.y * contentH,
     ];
-    drawThoughtBubble(ctx, box.x, box.y, box.w, box.h, think.text, tipPx, ink, 6021, R, bubbleFont);
+    const thinkImg = think.imageSrc ? getPanelImage(think.imageSrc) : null;
+    drawThoughtBubble(ctx, box.x, box.y, box.w, box.h, think.text ?? "", tipPx, ink, 6021 + i * 917, R, bubbleFont, thinkImg);
+  }
+
+  for (const oi of meta.overlayImages ?? []) {
+    const oImg = getPanelImage(oi.src);
+    if (!oImg) continue;
+    const ox = innerLeft + oi.norm.x * innerW;
+    const oy = contentTop + oi.norm.y * contentH;
+    const ow = oi.norm.w * innerW;
+    const oh = oi.norm.h * contentH;
+    const scale = Math.min(ow / oImg.width, oh / oImg.height);
+    const dw = oImg.width * scale;
+    const dh = oImg.height * scale;
+    ctx.drawImage(oImg, ox + (ow - dw) * 0.5, oy + (oh - dh) * 0.5, dw, dh);
+  }
+
+  if (meta.lightbulb) {
+    const lb = meta.lightbulb;
+    const lbx = innerLeft + lb.x * innerW;
+    const lby = contentTop + lb.y * contentH;
+    const lbSize = lb.size * Math.min(innerW, contentH);
+    drawComicLightbulb(ctx, lbx, lby, lbSize, ink);
   }
 
   ctx.restore();
@@ -956,8 +1132,20 @@ export type ComicTableSpec = {
   rows: (string | null)[][];
 };
 
+export type StroopWord = {
+  word: string;
+  color: string;
+};
+
+export type ComicStroopScreen = {
+  words: StroopWord[];
+};
+
 /** Single table or array of tables rendered side by side. */
-export type ComicTableMeta = ComicTableSpec | ComicTableSpec[];
+export type ComicTableMeta =
+  | ComicTableSpec
+  | ComicTableSpec[]
+  | { tables: ComicTableSpec | ComicTableSpec[]; stroopScreen: ComicStroopScreen };
 
 function drawSingleTable(
   ctx: CanvasRenderingContext2D,
@@ -1058,6 +1246,104 @@ function drawSingleTable(
   }
 }
 
+function drawStroopMonitor(
+  ctx: CanvasRenderingContext2D,
+  screen: ComicStroopScreen,
+  mx: number,
+  my: number,
+  mw: number,
+  mh: number,
+  ink: string,
+  R: typeof retroComicRoot
+): void {
+  const bezR = Math.min(mw, mh) * 0.04;
+  const standW = mw * 0.3;
+  const standH = mh * 0.08;
+  const baseW = mw * 0.45;
+  const baseH = mh * 0.03;
+
+  // Stand
+  ctx.fillStyle = "#555";
+  ctx.fillRect(mx + (mw - standW) * 0.5, my + mh, standW, standH);
+  // Base
+  ctx.fillStyle = "#444";
+  if (typeof ctx.roundRect === "function") {
+    ctx.beginPath();
+    ctx.roundRect(mx + (mw - baseW) * 0.5, my + mh + standH, baseW, baseH, baseH * 0.4);
+    ctx.fill();
+  } else {
+    ctx.fillRect(mx + (mw - baseW) * 0.5, my + mh + standH, baseW, baseH);
+  }
+
+  // Monitor body
+  ctx.fillStyle = "#333";
+  if (typeof ctx.roundRect === "function") {
+    ctx.beginPath();
+    ctx.roundRect(mx, my, mw, mh, bezR);
+    ctx.fill();
+  } else {
+    ctx.fillRect(mx, my, mw, mh);
+  }
+
+  // Screen area (inset)
+  const bezel = Math.max(4, mw * 0.04);
+  const sx = mx + bezel;
+  const sy = my + bezel;
+  const sw = mw - bezel * 2;
+  const sh = mh - bezel * 2 - bezel * 0.5;
+  ctx.fillStyle = "#1a1a2e";
+  if (typeof ctx.roundRect === "function") {
+    ctx.beginPath();
+    ctx.roundRect(sx, sy, sw, sh, bezR * 0.5);
+    ctx.fill();
+  } else {
+    ctx.fillRect(sx, sy, sw, sh);
+  }
+
+  // Stroop word animation
+  const { words } = screen;
+  if (words.length === 0) return;
+  const t = Date.now() * 0.001;
+  const cycleDur = 1.5;
+  const idx = Math.floor(t / cycleDur) % words.length;
+  const phase = (t % cycleDur) / cycleDur;
+  const entry = words[idx]!;
+
+  const fontPx = Math.max(14, Math.round(sh * 0.32));
+  ctx.save();
+  ctx.beginPath();
+  if (typeof ctx.roundRect === "function") {
+    ctx.roundRect(sx, sy, sw, sh, bezR * 0.5);
+  } else {
+    ctx.rect(sx, sy, sw, sh);
+  }
+  ctx.clip();
+
+  let alpha = 1;
+  if (phase < 0.15) alpha = phase / 0.15;
+  else if (phase > 0.85) alpha = (1 - phase) / 0.15;
+
+  ctx.globalAlpha = alpha;
+  ctx.font = `700 ${fontPx}px ui-monospace, "Courier New", monospace`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "middle";
+  ctx.fillStyle = entry.color;
+  ctx.fillText(entry.word.toUpperCase(), sx + sw * 0.5, sy + sh * 0.5);
+
+  // Fixation cross (faint, always)
+  ctx.globalAlpha = 0.18;
+  const crossSize = fontPx * 0.25;
+  ctx.strokeStyle = "#888";
+  ctx.lineWidth = Math.max(1, crossSize * 0.15);
+  ctx.beginPath();
+  ctx.moveTo(sx + sw * 0.5, sy + sh * 0.5 - crossSize);
+  ctx.lineTo(sx + sw * 0.5, sy + sh * 0.5 + crossSize);
+  ctx.moveTo(sx + sw * 0.5 - crossSize, sy + sh * 0.5);
+  ctx.lineTo(sx + sw * 0.5 + crossSize, sy + sh * 0.5);
+  ctx.stroke();
+  ctx.restore();
+}
+
 export function drawComicTableLayout(
   ctx: CanvasRenderingContext2D,
   scene: SlideScene2d,
@@ -1069,7 +1355,17 @@ export function drawComicTableLayout(
   titleStyle: CanvasBlockStyle | undefined
 ): void {
   const raw = scene.comicTable!;
-  const tables: ComicTableSpec[] = Array.isArray(raw) ? raw : [raw];
+  let tables: ComicTableSpec[];
+  let stroop: ComicStroopScreen | null = null;
+  if (Array.isArray(raw)) {
+    tables = raw;
+  } else if ("tables" in raw && "stroopScreen" in raw) {
+    const inner = raw.tables;
+    tables = Array.isArray(inner) ? inner : [inner];
+    stroop = raw.stroopScreen;
+  } else {
+    tables = [raw as ComicTableSpec];
+  }
   const t = tokens2d;
   const pad = Math.round(Math.min(w, h) * t.padRatio);
   const R = retroComicRoot;
@@ -1124,12 +1420,155 @@ export function drawComicTableLayout(
   const contentBottom = innerTop + innerPanelH - pad * 0.28;
   const contentH = Math.max(100, contentBottom - contentTop);
 
+  let tableAreaTop = contentTop;
+  let tableAreaH = contentH;
+
+  if (stroop) {
+    const monitorH = contentH * 0.36;
+    const monitorW = monitorH * 1.35;
+    const monitorX = innerLeft + (innerW - monitorW) * 0.5;
+    const monitorY = contentTop;
+    drawStroopMonitor(ctx, stroop, monitorX, monitorY, monitorW, monitorH, ink, R);
+    const standExtra = monitorH * 0.11;
+    tableAreaTop = contentTop + monitorH + standExtra + contentH * 0.03;
+    tableAreaH = contentH - monitorH - standExtra - contentH * 0.03;
+  }
+
   const gap = Math.round(innerW * 0.03);
   const slotW = (innerW - gap * (tables.length - 1)) / tables.length;
 
   for (let i = 0; i < tables.length; i++) {
     const slotX = innerLeft + i * (slotW + gap);
-    drawSingleTable(ctx, tables[i]!, slotX, contentTop, slotW, contentH, ink, w, h, R);
+    drawSingleTable(ctx, tables[i]!, slotX, tableAreaTop, slotW, tableAreaH, ink, w, h, R);
+  }
+
+  ctx.restore();
+}
+
+/* ─── Comic bullet-box layout ─── */
+
+export type ComicBulletBoxMeta = {
+  items: string[];
+};
+
+export function drawComicBulletBoxLayout(
+  ctx: CanvasRenderingContext2D,
+  scene: SlideScene2d,
+  w: number,
+  h: number,
+  tokens2d: CanvasTokens2d,
+  paper: string,
+  ink: string,
+  titleStyle: CanvasBlockStyle | undefined
+): void {
+  const meta = scene.comicBulletBox!;
+  const t = tokens2d;
+  const pad = Math.round(Math.min(w, h) * t.padRatio);
+  const R = retroComicRoot;
+
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+  ctx.textBaseline = "top";
+
+  ctx.fillStyle = paper;
+  ctx.fillRect(0, 0, w, h);
+
+  const borderW = Math.max(6, Math.round(Math.min(w, h) * 0.012));
+  ctx.strokeStyle = ink;
+  ctx.lineWidth = borderW;
+  ctx.strokeRect(borderW * 0.5, borderW * 0.5, w - borderW, h - borderW);
+
+  const innerLeft = borderW + pad * 0.45;
+  const innerRight = w - borderW - pad * 0.45;
+  const innerTop = borderW + pad * 0.35;
+  const innerW = innerRight - innerLeft;
+  const innerBottom = h - borderW - pad * 0.55;
+  const innerPanelH = Math.max(80, innerBottom - innerTop - 2);
+
+  ctx.strokeStyle = R.processYellow;
+  ctx.lineWidth = Math.max(2, borderW * 0.22);
+  ctx.setLineDash([6, 5]);
+  if (typeof ctx.roundRect === "function") {
+    ctx.beginPath();
+    ctx.roundRect(innerLeft + 2, innerTop + 2, innerW - 4, innerPanelH - 4, 8);
+    ctx.stroke();
+  } else {
+    ctx.strokeRect(innerLeft + 2, innerTop + 2, innerW - 4, innerPanelH - 4);
+  }
+  ctx.setLineDash([]);
+
+  const titlePx = Math.max(38, Math.round(Math.min(w, h) * 0.09));
+  ctx.textAlign = "center";
+  ctx.font = t.titleFont(titlePx);
+  drawStyledTextLine(
+    ctx,
+    (scene.title ?? "").toUpperCase(),
+    w / 2,
+    innerTop + pad * 0.15,
+    ink,
+    1,
+    titleStyle ? { ...titleStyle, align: "center" } : { align: "center" }
+  );
+
+  const contentTop = innerTop + titlePx * 1.12 + pad * 0.35;
+  const contentBottom = innerTop + innerPanelH - pad * 0.28;
+  const contentH = Math.max(100, contentBottom - contentTop);
+
+  const { items } = meta;
+  if (!items.length) { ctx.restore(); return; }
+
+  const itemFont = Math.max(14, Math.round(Math.min(w, h) * 0.028));
+  const lh = itemFont * 1.7;
+  const padX = itemFont * 1.4;
+  const padY = itemFont * 1.2;
+
+  ctx.font = `italic 600 ${itemFont}px ${retroComicCoverBodyFontStack}`;
+  ctx.letterSpacing = `${Math.max(0.3, itemFont * 0.02)}px`;
+
+  let maxLine = 0;
+  const formatted = items.map((s, i) => `${i + 1}.  ${s}`);
+  for (const ln of formatted) maxLine = Math.max(maxLine, ctx.measureText(ln).width);
+
+  const boxW = Math.min(innerW * 0.75, maxLine + padX * 2 + 8);
+  const boxH = Math.min(contentH * 0.9, formatted.length * lh + padY * 2);
+  const boxX = innerLeft + (innerW - boxW) * 0.5;
+  const boxY = contentTop + (contentH - boxH) * 0.5;
+
+  const rr = Math.min(12, boxW * 0.02);
+  const outerLw = Math.max(2.5, Math.min(boxW, boxH) * 0.006);
+  const inset = Math.max(5, outerLw * 1.2);
+
+  ctx.beginPath();
+  if (typeof ctx.roundRect === "function") {
+    ctx.roundRect(boxX, boxY, boxW, boxH, rr);
+  } else {
+    ctx.rect(boxX, boxY, boxW, boxH);
+  }
+  ctx.fillStyle = R.halo;
+  ctx.fill();
+  ctx.strokeStyle = ink;
+  ctx.lineWidth = outerLw;
+  ctx.stroke();
+
+  ctx.beginPath();
+  if (typeof ctx.roundRect === "function") {
+    ctx.roundRect(boxX + inset, boxY + inset, boxW - inset * 2, boxH - inset * 2, rr * 0.55);
+  } else {
+    ctx.rect(boxX + inset, boxY + inset, boxW - inset * 2, boxH - inset * 2);
+  }
+  ctx.strokeStyle = R.processYellow;
+  ctx.lineWidth = Math.max(1.2, outerLw * 0.4);
+  ctx.stroke();
+
+  ctx.textAlign = "left";
+  ctx.textBaseline = "top";
+  ctx.fillStyle = ink;
+  let ty = boxY + padY;
+  for (const ln of formatted) {
+    ctx.fillText(ln, boxX + padX, ty);
+    ty += lh;
   }
 
   ctx.restore();

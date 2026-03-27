@@ -8,9 +8,11 @@ import { retroComicRoot } from "../../engine/canvas/styles";
 import presentationMeta from "./presentation.config.json";
 
 const psycheTitleAsset = new URL("./assets/psyche-title-alpha.png", import.meta.url).href;
+const psycheCharacterAsset = psycheTitleAsset;
 const professorAssignmentAsset = new URL("./assets/1_assignment/professor.png", import.meta.url).href;
 const phdStudentAssignmentAsset = new URL("./assets/1_assignment/phd-student.png", import.meta.url).href;
 const studentDesperateAsset = new URL("./assets/2_assignment/student_desperate.png", import.meta.url).href;
+const dataDetectiveBatmanAsset = new URL("./assets/6_data_detective/batman.png", import.meta.url).href;
 
 export type CanvasScene = SlideScene2d & { title: string };
 
@@ -107,19 +109,56 @@ export default [
   {
     title: "The Data - As We Wanted It",
     comicTable: {
+      stroopScreen: {
+        words: [
+          { word: "RED",   color: "#4caf50" },
+          { word: "BLUE",  color: "#2196f3" },
+          { word: "GREEN", color: "#f44336" },
+          { word: "RED",   color: "#f44336" },
+          { word: "BLUE",  color: "#4caf50" },
+          { word: "GREEN", color: "#4caf50" },
+        ],
+      },
+      tables: {
+        label: "experiment_1.csv",
+        columns: [
+          "subject_id", "trial_id", "age", "gender",
+          "word", "color", "congruency", "reaction_time", "accuracy",
+        ],
+        rows: [
+          ["S01", "1", "24", "F", "RED",   "green", "incongruent", "682",  "true"],
+          ["S01", "2", "24", "F", "BLUE",  "blue",  "congruent",   "423",  "false"],
+          ["S01", "3", "24", "F", "GREEN", "red",   "incongruent", "711",  "true"],
+          ["S01", "4", "24", "F", "RED",   "red",   "congruent",   "398",  "true"],
+          ["\u2026",  "\u2026",  "",   "",  "\u2026", "\u2026", "\u2026", "\u2026", "\u2026"],
+          ["S02", "1", "31", "M", "BLUE",  "green", "incongruent", "745",  "true"],
+          ["S02", "2", "31", "M", "GREEN", "green", "congruent",   "512",  "true"],
+          ["S02", "3", "31", "M", "RED",   "blue",  "incongruent", "689",  "false"],
+          ["S02", "4", "31", "M", "GREEN", "red",   "incongruent", "634",  "true"],
+        ],
+      },
+    },
+    animated: true,
+    paper,
+    ink,
+    canvasStyle: "retro-comic",
+  },
+  {
+    title: "The Data - As We Wanted It",
+    comicTable: {
       label: "experiment_1.csv",
       columns: [
         "subject_id", "trial_id", "age", "gender",
-        "word", "color","congruency", "reaction_time", "accuracy",
+        "word", "color", "congruency", "reaction_time", "accuracy",
       ],
       rows: [
         ["S01", "1", "24", "F", "RED",   "green", "incongruent", "682",  "true"],
-        ["S01", "2", "24", "F", "BLUE",  "blue",  "incongruent", "423",  "false"],
+        ["S01", "2", "24", "F", "BLUE",  "blue",  "congruent",   "423",  "false"],
         ["S01", "3", "24", "F", "GREEN", "red",   "incongruent", "711",  "true"],
-        ["S01", "4", "24", "F", "RED",   "red",   "congruent", "398",  "true"],
-        ["\u2026",  "\u2026",  "",   "",  "\u2026",   "\u2026",   "\u2026",    "\u2026"],
+        ["S01", "4", "24", "F", "RED",   "red",   "congruent",   "398",  "true"],
+        ["\u2026",  "\u2026",  "",   "",  "\u2026", "\u2026", "\u2026", "\u2026", "\u2026"],
         ["S02", "1", "31", "M", "BLUE",  "green", "incongruent", "745",  "true"],
-        ["S02", "2", "31", "M", "GREEN", "green", "congruent", "512",  "true"],
+        ["S02", "2", "31", "M", "GREEN", "green", "congruent",   "512",  "true"],
         ["S02", "3", "31", "M", "RED",   "blue",  "incongruent", "689",  "false"],
         ["S02", "4", "31", "M", "GREEN", "red",   "incongruent", "634",  "true"],
       ],
@@ -194,6 +233,99 @@ export default [
         ],
       },
     ],
+    paper,
+    ink,
+    canvasStyle: "retro-comic",
+  },
+  {
+    title: "Data Detective",
+    comicNarration: {
+      narration: "Data wrangling in progress.",
+      figureSrc: dataDetectiveBatmanAsset,
+      figureNorm: { x: 0.03, y: 0.08, w: 0.42, h: 0.86 },
+      narrationBoxNorm: { x: 0.08, y: 0.80, w: 0.32, h: 0.14 },
+      thinkBubbles: [
+        {
+          text: "Trying to figure out what files belong to what experiments...",
+          boxNorm: { x: 0.50, y: 0.06, w: 0.45, h: 0.23 },
+          tailTip: { x: 0.30, y: 0.26 },
+        },
+        {
+          text: "Trying to map variables to the right columns...",
+          boxNorm: { x: 0.56, y: 0.32, w: 0.40, h: 0.20 },
+          tailTip: { x: 0.32, y: 0.34 },
+        },
+        {
+          text: "Wrestling with inconsistent file formats...",
+          boxNorm: { x: 0.52, y: 0.54, w: 0.42, h: 0.18 },
+          tailTip: { x: 0.33, y: 0.4 },
+        },
+        {
+          text: "Getting everything into trial-wise format...",
+          boxNorm: { x: 0.56, y: 0.74, w: 0.38, h: 0.16 },
+          tailTip: { x: 0.34, y: 0.52 },
+        },
+      ],
+    },
+    paper,
+    ink,
+    canvasStyle: "retro-comic",
+  },
+  {
+    title: "Data Detective",
+    comicNarration: {
+      narration: "Let's automate",
+      figureSrc: dataDetectiveBatmanAsset,
+      figureNorm: { x: 0.06, y: 0.10, w: 0.38, h: 0.82 },
+      narrationBoxNorm: { x: 0.10, y: 0.78, w: 0.30, h: 0.14 },
+      thinkBubble: {
+        imageSrc: psycheCharacterAsset,
+        boxNorm: { x: 0.50, y: 0.12, w: 0.44, h: 0.70 },
+        tailTip: { x: 0.34, y: 0.40 },
+      },
+      lightbulb: { x: 0.25, y: -0.02, size: 0.16 },
+    },
+    paper,
+    ink,
+    canvasStyle: "retro-comic",
+  },
+  {
+    title: "But wait… is it worth it?",
+    paper,
+    ink,
+    canvasStyle: "retro-comic",
+  },
+  {
+    title: "But wait… is it worth it?",
+    comicBulletBox: { items: ["Replication"], },
+    paper,
+    ink,
+    canvasStyle: "retro-comic",
+  },
+  {
+    title: "But wait… is it worth it?",
+    comicBulletBox: { items: ["Replication", "Training AI models"], },
+    paper,
+    ink,
+    canvasStyle: "retro-comic",
+  },
+  {
+    title: "But wait… is it worth it?",
+    comicBulletBox: { items: ["Replication", "Training AI models", "Finding unified theories"], },
+    paper,
+    ink,
+    canvasStyle: "retro-comic",
+  },
+  {
+    title: "But wait… is it worth it?",
+    comicBulletBox: {
+      items: [
+        "Replication",
+        "Training AI models",
+        "Finding unified theories",
+        "Mapping out experimental design space",
+      ],
+    },
     paper,
     ink,
     canvasStyle: "retro-comic",

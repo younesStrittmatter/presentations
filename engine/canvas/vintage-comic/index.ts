@@ -4,11 +4,13 @@ export {
   type ComicCoverMeta,
 } from "./cover";
 export {
+  drawComicBulletBoxLayout,
   drawComicNarrationLayout,
   drawComicPanelLayout,
   drawComicTableLayout,
   preloadComicNarrationImages,
   preloadComicPanelImages,
+  type ComicBulletBoxMeta,
   type ComicNarrationMeta,
   type ComicNarrationThinkBubble,
   type ComicPanelMeta,

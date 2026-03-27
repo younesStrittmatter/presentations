@@ -61,6 +61,46 @@ layout: canvas
 ---
 
 ---
+layout: canvas
+---
+
+---
+layout: canvas
+---
+
+---
+layout: canvas
+---
+
+---
+layout: canvas
+---
+
+---
+layout: canvas
+---
+
+---
+layout: canvas
+---
+
+---
+layout: canvas
+---
+
+---
+layout: canvas
+---
+
+---
+layout: canvas
+---
+
+---
+layout: canvas
+---
+
+---
 layout: center
 class: text-center
 src: ./feedback.md

@@ -6,9 +6,11 @@ import { contentAnchorX, drawStyledTextLine } from "./shared/textStyle";
 import { getCanvasStyle, type CanvasBlockRole, type CanvasBlockStyle, type CanvasStyleId } from "./styles";
 import { drawComicCoverLayout, type ComicCoverMeta } from "./vintage-comic/cover";
 import {
+  drawComicBulletBoxLayout,
   drawComicNarrationLayout,
   drawComicPanelLayout,
   drawComicTableLayout,
+  type ComicBulletBoxMeta,
   type ComicNarrationMeta,
   type ComicPanelMeta,
   type ComicTableMeta,
@@ -16,6 +18,7 @@ import {
 
 export type { ComicCoverMeta } from "./vintage-comic/cover";
 export type {
+  ComicBulletBoxMeta,
   ComicNarrationMeta,
   ComicNarrationThinkBubble,
   ComicPanelMeta,
@@ -42,6 +45,10 @@ export type SlideScene2d = {
   comicNarration?: ComicNarrationMeta;
   /** Data table centered in the panel */
   comicTable?: ComicTableMeta;
+  /** Numbered bullet list in a centered narration box */
+  comicBulletBox?: ComicBulletBoxMeta;
+  /** When true, the slide is redrawn every frame (for animations). */
+  animated?: boolean;
 };
 
 function mergeBlockStyle(
@@ -109,6 +116,19 @@ export function drawSlideScene2d(
   }
   if (scene.comicTable) {
     drawComicTableLayout(
+      ctx,
+      scene,
+      w,
+      h,
+      t,
+      paper,
+      ink,
+      mergeBlockStyle("title", scene, presetBlocks)
+    );
+    return;
+  }
+  if (scene.comicBulletBox) {
+    drawComicBulletBoxLayout(
       ctx,
       scene,
       w,

@@ -15,12 +15,14 @@ export {
   styleRetroComic,
 } from "./presets";
 export {
+  drawComicBulletBoxLayout,
   drawComicCoverLayout,
   drawComicNarrationLayout,
   drawComicPanelLayout,
   drawComicTableLayout,
   preloadComicNarrationImages,
   preloadComicPanelImages,
+  type ComicBulletBoxMeta,
   type ComicCoverMeta,
   type ComicNarrationMeta,
   type ComicNarrationThinkBubble,
