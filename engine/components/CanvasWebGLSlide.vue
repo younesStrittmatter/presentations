@@ -3,7 +3,7 @@
  * Orchestration: offscreen 2D (see engine/canvas/slideScene2d.ts) → texture →
  * post shader (engine/canvas/postprocessHalftone.ts), resize debounce, rAF.
  */
-import { nextTick, onMounted, onUnmounted, ref, watch } from "vue";
+import { nextTick, onActivated, onDeactivated, onMounted, onUnmounted, ref, watch } from "vue";
 import {
   FULLSCREEN_QUAD_ATTR,
   fullscreenQuadVertex,
@@ -233,7 +233,11 @@ function teardown() {
     gl.deleteProgram(program);
     program = null;
   }
+  const loseCtx = gl?.getExtension("WEBGL_lose_context");
+  if (loseCtx) loseCtx.loseContext();
   gl = null;
+  offscreen = null;
+  offCtx = null;
   if (viewRef.value) viewRef.value.innerHTML = "";
 }
 
@@ -272,6 +276,20 @@ onMounted(async () => {
   requestAnimationFrame(() => {
     requestAnimationFrame(commitResize);
   });
+});
+
+onActivated(async () => {
+  if (!gl) {
+    await ensureCanvasDisplayFonts();
+    await preloadSceneAssets(props.scene);
+    initGL();
+    startLoop();
+    requestAnimationFrame(() => requestAnimationFrame(commitResize));
+  }
+});
+
+onDeactivated(() => {
+  teardown();
 });
 
 onUnmounted(() => {
