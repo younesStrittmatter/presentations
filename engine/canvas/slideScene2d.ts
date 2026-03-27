@@ -7,10 +7,12 @@ import { getCanvasStyle, type CanvasBlockRole, type CanvasBlockStyle, type Canva
 import { drawComicCoverLayout, type ComicCoverMeta } from "./vintage-comic/cover";
 import {
   drawComicBulletBoxLayout,
+  drawComicFlowDiagramLayout,
   drawComicNarrationLayout,
   drawComicPanelLayout,
   drawComicTableLayout,
   type ComicBulletBoxMeta,
+  type ComicFlowDiagramMeta,
   type ComicNarrationMeta,
   type ComicPanelMeta,
   type ComicTableMeta,
@@ -19,6 +21,7 @@ import {
 export type { ComicCoverMeta } from "./vintage-comic/cover";
 export type {
   ComicBulletBoxMeta,
+  ComicFlowDiagramMeta,
   ComicNarrationMeta,
   ComicNarrationThinkBubble,
   ComicPanelMeta,
@@ -47,6 +50,8 @@ export type SlideScene2d = {
   comicTable?: ComicTableMeta;
   /** Numbered bullet list in a centered narration box */
   comicBulletBox?: ComicBulletBoxMeta;
+  /** Flow diagram with nodes (icons) and labeled arrows */
+  comicFlowDiagram?: ComicFlowDiagramMeta;
   /** When true, the slide is redrawn every frame (for animations). */
   animated?: boolean;
 };
@@ -129,6 +134,19 @@ export function drawSlideScene2d(
   }
   if (scene.comicBulletBox) {
     drawComicBulletBoxLayout(
+      ctx,
+      scene,
+      w,
+      h,
+      t,
+      paper,
+      ink,
+      mergeBlockStyle("title", scene, presetBlocks)
+    );
+    return;
+  }
+  if (scene.comicFlowDiagram) {
+    drawComicFlowDiagramLayout(
       ctx,
       scene,
       w,

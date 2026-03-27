@@ -5,12 +5,14 @@ export {
 } from "./cover";
 export {
   drawComicBulletBoxLayout,
+  drawComicFlowDiagramLayout,
   drawComicNarrationLayout,
   drawComicPanelLayout,
   drawComicTableLayout,
   preloadComicNarrationImages,
   preloadComicPanelImages,
   type ComicBulletBoxMeta,
+  type ComicFlowDiagramMeta,
   type ComicNarrationMeta,
   type ComicNarrationThinkBubble,
   type ComicPanelMeta,

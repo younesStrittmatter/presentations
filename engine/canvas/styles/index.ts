@@ -17,6 +17,7 @@ export {
 export {
   drawComicBulletBoxLayout,
   drawComicCoverLayout,
+  drawComicFlowDiagramLayout,
   drawComicNarrationLayout,
   drawComicPanelLayout,
   drawComicTableLayout,
@@ -24,6 +25,7 @@ export {
   preloadComicPanelImages,
   type ComicBulletBoxMeta,
   type ComicCoverMeta,
+  type ComicFlowDiagramMeta,
   type ComicNarrationMeta,
   type ComicNarrationThinkBubble,
   type ComicPanelMeta,

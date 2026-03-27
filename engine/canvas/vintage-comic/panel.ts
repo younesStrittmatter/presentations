@@ -1573,3 +1573,514 @@ export function drawComicBulletBoxLayout(
 
   ctx.restore();
 }
+
+/* ─── Comic flow-diagram layout ─── */
+
+export type FlowNodeIcon = "paper" | "folder" | "box" | "database" | "gear" | "feedback";
+
+export type FlowNode = {
+  id: string;
+  label: string;
+  subtitle?: string;
+  icon?: FlowNodeIcon;
+  norm: { x: number; y: number; w: number; h: number };
+};
+
+export type FlowEdge = {
+  from: string;
+  to: string;
+  label?: string;
+};
+
+export type ComicFlowDiagramMeta = {
+  nodes: FlowNode[];
+  edges: FlowEdge[];
+};
+
+function drawPaperIcon(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, ink: string): void {
+  const fold = Math.min(w, h) * 0.22;
+  ctx.beginPath();
+  ctx.moveTo(x, y);
+  ctx.lineTo(x + w - fold, y);
+  ctx.lineTo(x + w, y + fold);
+  ctx.lineTo(x + w, y + h);
+  ctx.lineTo(x, y + h);
+  ctx.closePath();
+  ctx.fillStyle = "#fff8e7";
+  ctx.fill();
+  ctx.strokeStyle = ink;
+  ctx.lineWidth = Math.max(1.5, w * 0.02);
+  ctx.stroke();
+  // Fold triangle
+  ctx.beginPath();
+  ctx.moveTo(x + w - fold, y);
+  ctx.lineTo(x + w - fold, y + fold);
+  ctx.lineTo(x + w, y + fold);
+  ctx.closePath();
+  ctx.fillStyle = "#efe4cc";
+  ctx.fill();
+  ctx.stroke();
+  // Text lines
+  const lw = Math.max(1, w * 0.015);
+  ctx.strokeStyle = "#bbb";
+  ctx.lineWidth = lw;
+  const lineCount = 4;
+  const lineMargin = w * 0.15;
+  for (let i = 0; i < lineCount; i++) {
+    const ly = y + h * 0.28 + i * h * 0.14;
+    const lx1 = x + lineMargin;
+    const lx2 = x + w - lineMargin - (i === 0 ? fold * 0.5 : 0);
+    if (ly < y + h - h * 0.1) {
+      ctx.beginPath();
+      ctx.moveTo(lx1, ly);
+      ctx.lineTo(lx2, ly);
+      ctx.stroke();
+    }
+  }
+}
+
+function drawFolderIcon(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, ink: string): void {
+  const tabW = w * 0.35;
+  const tabH = h * 0.18;
+  const r = Math.min(w, h) * 0.06;
+  // Tab
+  ctx.beginPath();
+  ctx.moveTo(x + r, y);
+  ctx.lineTo(x + tabW, y);
+  ctx.lineTo(x + tabW + tabH * 0.6, y + tabH);
+  ctx.lineTo(x + w - r, y + tabH);
+  ctx.arcTo(x + w, y + tabH, x + w, y + tabH + r, r);
+  ctx.lineTo(x + w, y + h - r);
+  ctx.arcTo(x + w, y + h, x + w - r, y + h, r);
+  ctx.lineTo(x + r, y + h);
+  ctx.arcTo(x, y + h, x, y + h - r, r);
+  ctx.lineTo(x, y + r);
+  ctx.arcTo(x, y, x + r, y, r);
+  ctx.closePath();
+  ctx.fillStyle = "#f5d76e";
+  ctx.fill();
+  ctx.strokeStyle = ink;
+  ctx.lineWidth = Math.max(1.5, w * 0.02);
+  ctx.stroke();
+  // Inner line
+  ctx.beginPath();
+  ctx.moveTo(x + w * 0.08, y + tabH);
+  ctx.lineTo(x + tabW + tabH * 0.6, y + tabH);
+  ctx.strokeStyle = "#d4b545";
+  ctx.lineWidth = Math.max(1, w * 0.015);
+  ctx.stroke();
+}
+
+function drawDatabaseIcon(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, ink: string): void {
+  const ry = h * 0.15;
+  const cx = x + w * 0.5;
+  ctx.beginPath();
+  ctx.ellipse(cx, y + ry, w * 0.5, ry, 0, 0, Math.PI * 2);
+  ctx.fillStyle = "#d4edda";
+  ctx.fill();
+  ctx.strokeStyle = ink;
+  ctx.lineWidth = Math.max(1.5, w * 0.02);
+  ctx.stroke();
+  // Body
+  ctx.beginPath();
+  ctx.moveTo(x, y + ry);
+  ctx.lineTo(x, y + h - ry);
+  ctx.ellipse(cx, y + h - ry, w * 0.5, ry, 0, Math.PI, 0, true);
+  ctx.lineTo(x + w, y + ry);
+  ctx.fillStyle = "#e8f5e9";
+  ctx.fill();
+  ctx.stroke();
+  // Bottom ellipse
+  ctx.beginPath();
+  ctx.ellipse(cx, y + h - ry, w * 0.5, ry, 0, 0, Math.PI * 2);
+  ctx.stroke();
+  // Middle line
+  ctx.beginPath();
+  ctx.ellipse(cx, y + h * 0.5, w * 0.5, ry, 0, Math.PI, 0, true);
+  ctx.strokeStyle = ink;
+  ctx.globalAlpha = 0.4;
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+}
+
+function drawGearIcon(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, ink: string): void {
+  const cx = x + w * 0.5;
+  const cy = y + h * 0.5;
+  const r = Math.min(w, h) * 0.42;
+  const lw = Math.max(1.8, r * 0.08);
+
+  // Brain / AI shape: rounded head outline
+  ctx.save();
+
+  // Head circle
+  ctx.beginPath();
+  ctx.arc(cx, cy - r * 0.08, r, 0, Math.PI * 2);
+  ctx.fillStyle = "#e3d5f5";
+  ctx.fill();
+  ctx.strokeStyle = ink;
+  ctx.lineWidth = lw;
+  ctx.stroke();
+
+  // Brain sulcus lines
+  ctx.strokeStyle = ink;
+  ctx.lineWidth = lw * 0.7;
+  ctx.lineCap = "round";
+
+  // Vertical divider
+  ctx.beginPath();
+  ctx.moveTo(cx, cy - r * 0.75);
+  ctx.quadraticCurveTo(cx + r * 0.06, cy - r * 0.08, cx, cy + r * 0.6);
+  ctx.stroke();
+
+  // Left hemisphere curves
+  ctx.beginPath();
+  ctx.moveTo(cx - r * 0.15, cy - r * 0.6);
+  ctx.quadraticCurveTo(cx - r * 0.6, cy - r * 0.2, cx - r * 0.2, cy + r * 0.15);
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.moveTo(cx - r * 0.25, cy + r * 0.05);
+  ctx.quadraticCurveTo(cx - r * 0.55, cy + r * 0.35, cx - r * 0.1, cy + r * 0.55);
+  ctx.stroke();
+
+  // Right hemisphere curves
+  ctx.beginPath();
+  ctx.moveTo(cx + r * 0.15, cy - r * 0.6);
+  ctx.quadraticCurveTo(cx + r * 0.6, cy - r * 0.2, cx + r * 0.2, cy + r * 0.15);
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.moveTo(cx + r * 0.25, cy + r * 0.05);
+  ctx.quadraticCurveTo(cx + r * 0.55, cy + r * 0.35, cx + r * 0.1, cy + r * 0.55);
+  ctx.stroke();
+
+  // Small circuit dots to hint at AI
+  const dotR = r * 0.07;
+  ctx.fillStyle = "#7c4dff";
+  for (const [dx, dy] of [[-0.35, -0.25], [0.35, -0.25], [-0.3, 0.25], [0.3, 0.25], [0, -0.45], [0, 0.35]] as [number, number][]) {
+    ctx.beginPath();
+    ctx.arc(cx + r * dx, cy + r * dy - r * 0.08, dotR, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  ctx.restore();
+}
+
+function drawFeedbackIcon(ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, ink: string): void {
+  const cx = x + w * 0.5;
+  const cy = y + h * 0.5;
+  const r = Math.min(w, h) * 0.38;
+  const lw = Math.max(2, r * 0.1);
+  const arrowSize = r * 0.3;
+
+  ctx.save();
+  ctx.strokeStyle = ink;
+  ctx.lineWidth = lw;
+  ctx.lineCap = "round";
+
+  // Top arc (clockwise arrow)
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, -Math.PI * 0.8, Math.PI * 0.05);
+  ctx.stroke();
+  // Arrowhead
+  const a1 = Math.PI * 0.05;
+  const ax1 = cx + Math.cos(a1) * r;
+  const ay1 = cy + Math.sin(a1) * r;
+  ctx.beginPath();
+  ctx.moveTo(ax1, ay1);
+  ctx.lineTo(ax1 - arrowSize * 0.6, ay1 - arrowSize);
+  ctx.lineTo(ax1 + arrowSize * 0.7, ay1 - arrowSize * 0.3);
+  ctx.closePath();
+  ctx.fillStyle = ink;
+  ctx.fill();
+
+  // Bottom arc (counter-clockwise arrow)
+  ctx.beginPath();
+  ctx.arc(cx, cy, r, Math.PI * 0.2, Math.PI * 1.05);
+  ctx.stroke();
+  // Arrowhead
+  const a2 = Math.PI * 1.05;
+  const ax2 = cx + Math.cos(a2) * r;
+  const ay2 = cy + Math.sin(a2) * r;
+  ctx.beginPath();
+  ctx.moveTo(ax2, ay2);
+  ctx.lineTo(ax2 + arrowSize * 0.6, ay2 + arrowSize);
+  ctx.lineTo(ax2 - arrowSize * 0.7, ay2 + arrowSize * 0.3);
+  ctx.closePath();
+  ctx.fill();
+
+  ctx.restore();
+}
+
+const flowIconDrawers: Record<FlowNodeIcon, (ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, ink: string) => void> = {
+  paper: drawPaperIcon,
+  folder: drawFolderIcon,
+  box: () => {},
+  database: drawDatabaseIcon,
+  gear: drawGearIcon,
+  feedback: drawFeedbackIcon,
+};
+
+function drawFlowNode(
+  ctx: CanvasRenderingContext2D,
+  node: FlowNode,
+  nx: number,
+  ny: number,
+  nw: number,
+  nh: number,
+  ink: string,
+  R: typeof retroComicRoot,
+  fontSize: number
+): void {
+  const hasIcon = node.icon && node.icon !== "box";
+  const iconH = hasIcon ? nh * 0.42 : 0;
+  const iconW = Math.min(nw * 0.65, iconH * 1.1);
+  const rr = Math.min(12, nw * 0.06);
+  const lw = Math.max(2, nw * 0.018);
+  const iconPadBottom = hasIcon ? nh * 0.08 : 0;
+
+  // Background box
+  ctx.save();
+  ctx.beginPath();
+  if (typeof ctx.roundRect === "function") {
+    ctx.roundRect(nx, ny, nw, nh, rr);
+  } else {
+    ctx.rect(nx, ny, nw, nh);
+  }
+  ctx.fillStyle = R.halo;
+  ctx.fill();
+  ctx.strokeStyle = ink;
+  ctx.lineWidth = lw;
+  ctx.stroke();
+
+  // Icon
+  if (hasIcon) {
+    const ix = nx + (nw - iconW) * 0.5;
+    const iy = ny + nh * 0.08;
+    flowIconDrawers[node.icon!](ctx, ix, iy, iconW, iconH, ink);
+  }
+
+  // Label
+  const labelY = hasIcon ? ny + nh * 0.08 + iconH + iconPadBottom : ny + nh * 0.25;
+  ctx.font = `700 ${fontSize}px ${retroComicCoverBodyFontStack}`;
+  ctx.textAlign = "center";
+  ctx.textBaseline = "top";
+  ctx.fillStyle = ink;
+  const lines = wrapLines(ctx, node.label.toUpperCase(), nw * 0.88);
+  const lh = fontSize * 1.18;
+  let ty = labelY;
+  for (const ln of lines) {
+    ctx.fillText(ln, nx + nw * 0.5, ty);
+    ty += lh;
+  }
+
+  // Subtitle
+  if (node.subtitle) {
+    const subFont = Math.max(10, fontSize * 0.72);
+    ctx.font = `italic 500 ${subFont}px ${retroComicCoverBodyFontStack}`;
+    ctx.fillStyle = R.inkMuted;
+    ctx.fillText(node.subtitle, nx + nw * 0.5, ty + fontSize * 0.15);
+  }
+
+  ctx.restore();
+}
+
+function drawArrow(
+  ctx: CanvasRenderingContext2D,
+  x1: number, y1: number,
+  x2: number, y2: number,
+  ink: string,
+  lineW: number,
+  label?: string,
+  labelFont?: number,
+  R?: typeof retroComicRoot
+): void {
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const len = Math.hypot(dx, dy);
+  if (len < 1) return;
+  const ux = dx / len;
+  const uy = dy / len;
+  const headLen = Math.max(8, lineW * 5);
+
+  ctx.save();
+  ctx.strokeStyle = ink;
+  ctx.lineWidth = lineW;
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+
+  ctx.beginPath();
+  ctx.moveTo(x1, y1);
+  ctx.lineTo(x2 - ux * headLen * 0.5, y2 - uy * headLen * 0.5);
+  ctx.stroke();
+
+  // Arrowhead
+  ctx.beginPath();
+  ctx.moveTo(x2, y2);
+  ctx.lineTo(x2 - ux * headLen - uy * headLen * 0.38, y2 - uy * headLen + ux * headLen * 0.38);
+  ctx.lineTo(x2 - ux * headLen + uy * headLen * 0.38, y2 - uy * headLen - ux * headLen * 0.38);
+  ctx.closePath();
+  ctx.fillStyle = ink;
+  ctx.fill();
+
+  if (label && labelFont && R) {
+    const mx = (x1 + x2) * 0.5;
+    const my = (y1 + y2) * 0.5;
+    const nx = -uy;
+    const ny = ux;
+    const offset = labelFont * 0.8;
+    const lx = mx + nx * offset;
+    const ly = my + ny * offset;
+    ctx.font = `italic 500 ${labelFont}px ${retroComicCoverBodyFontStack}`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    // Background
+    const tw = ctx.measureText(label).width + labelFont * 0.6;
+    const th = labelFont * 1.3;
+    ctx.fillStyle = R.halo;
+    ctx.fillRect(lx - tw * 0.5, ly - th * 0.5, tw, th);
+    ctx.fillStyle = ink;
+    ctx.fillText(label, lx, ly);
+  }
+
+  ctx.restore();
+}
+
+function getNodeCenter(
+  node: FlowNode,
+  innerLeft: number,
+  contentTop: number,
+  innerW: number,
+  contentH: number
+): { cx: number; cy: number; x: number; y: number; w: number; h: number } {
+  const x = innerLeft + node.norm.x * innerW;
+  const y = contentTop + node.norm.y * contentH;
+  const w = node.norm.w * innerW;
+  const h = node.norm.h * contentH;
+  return { cx: x + w * 0.5, cy: y + h * 0.5, x, y, w, h };
+}
+
+function edgeAttachPoints(
+  fromRect: { cx: number; cy: number; x: number; y: number; w: number; h: number },
+  toRect: { cx: number; cy: number; x: number; y: number; w: number; h: number }
+): { x1: number; y1: number; x2: number; y2: number } {
+  const dx = toRect.cx - fromRect.cx;
+  const dy = toRect.cy - fromRect.cy;
+  const absDx = Math.abs(dx);
+  const absDy = Math.abs(dy);
+  let x1: number, y1: number, x2: number, y2: number;
+
+  if (absDx > absDy) {
+    // Horizontal dominant
+    if (dx > 0) {
+      x1 = fromRect.x + fromRect.w; y1 = fromRect.cy;
+      x2 = toRect.x; y2 = toRect.cy;
+    } else {
+      x1 = fromRect.x; y1 = fromRect.cy;
+      x2 = toRect.x + toRect.w; y2 = toRect.cy;
+    }
+  } else {
+    // Vertical dominant
+    if (dy > 0) {
+      x1 = fromRect.cx; y1 = fromRect.y + fromRect.h;
+      x2 = toRect.cx; y2 = toRect.y;
+    } else {
+      x1 = fromRect.cx; y1 = fromRect.y;
+      x2 = toRect.cx; y2 = toRect.y + toRect.h;
+    }
+  }
+  return { x1, y1, x2, y2 };
+}
+
+export function drawComicFlowDiagramLayout(
+  ctx: CanvasRenderingContext2D,
+  scene: SlideScene2d,
+  w: number,
+  h: number,
+  tokens2d: CanvasTokens2d,
+  paper: string,
+  ink: string,
+  titleStyle: CanvasBlockStyle | undefined
+): void {
+  const meta = scene.comicFlowDiagram!;
+  const t = tokens2d;
+  const pad = Math.round(Math.min(w, h) * t.padRatio);
+  const R = retroComicRoot;
+
+  ctx.save();
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = "high";
+  ctx.textBaseline = "top";
+
+  ctx.fillStyle = paper;
+  ctx.fillRect(0, 0, w, h);
+
+  const borderW = Math.max(6, Math.round(Math.min(w, h) * 0.012));
+  ctx.strokeStyle = ink;
+  ctx.lineWidth = borderW;
+  ctx.strokeRect(borderW * 0.5, borderW * 0.5, w - borderW, h - borderW);
+
+  const innerLeft = borderW + pad * 0.45;
+  const innerRight = w - borderW - pad * 0.45;
+  const innerTop = borderW + pad * 0.35;
+  const innerW = innerRight - innerLeft;
+  const innerBottom = h - borderW - pad * 0.55;
+  const innerPanelH = Math.max(80, innerBottom - innerTop - 2);
+
+  ctx.strokeStyle = R.processYellow;
+  ctx.lineWidth = Math.max(2, borderW * 0.22);
+  ctx.setLineDash([6, 5]);
+  if (typeof ctx.roundRect === "function") {
+    ctx.beginPath();
+    ctx.roundRect(innerLeft + 2, innerTop + 2, innerW - 4, innerPanelH - 4, 8);
+    ctx.stroke();
+  } else {
+    ctx.strokeRect(innerLeft + 2, innerTop + 2, innerW - 4, innerPanelH - 4);
+  }
+  ctx.setLineDash([]);
+
+  const titlePx = Math.max(38, Math.round(Math.min(w, h) * 0.09));
+  ctx.textAlign = "center";
+  ctx.font = t.titleFont(titlePx);
+  drawStyledTextLine(
+    ctx,
+    (scene.title ?? "").toUpperCase(),
+    w / 2,
+    innerTop + pad * 0.15,
+    ink,
+    1,
+    titleStyle ? { ...titleStyle, align: "center" } : { align: "center" }
+  );
+
+  const contentTop = innerTop + titlePx * 1.12 + pad * 0.35;
+  const contentBottom = innerTop + innerPanelH - pad * 0.28;
+  const contentH = Math.max(100, contentBottom - contentTop);
+
+  const nodeFontPx = Math.max(13, Math.round(Math.min(w, h) * 0.026));
+  const arrowLw = Math.max(2, Math.min(w, h) * 0.004);
+  const labelFont = Math.max(10, Math.round(Math.min(w, h) * 0.017));
+
+  // Build node lookup
+  const nodeMap = new Map<string, FlowNode>();
+  for (const n of meta.nodes) nodeMap.set(n.id, n);
+
+  // Draw edges first (behind nodes)
+  for (const edge of meta.edges) {
+    const fromNode = nodeMap.get(edge.from);
+    const toNode = nodeMap.get(edge.to);
+    if (!fromNode || !toNode) continue;
+    const fromRect = getNodeCenter(fromNode, innerLeft, contentTop, innerW, contentH);
+    const toRect = getNodeCenter(toNode, innerLeft, contentTop, innerW, contentH);
+    const pts = edgeAttachPoints(fromRect, toRect);
+    drawArrow(ctx, pts.x1, pts.y1, pts.x2, pts.y2, ink, arrowLw, edge.label, labelFont, R);
+  }
+
+  // Draw nodes on top
+  for (const node of meta.nodes) {
+    const r = getNodeCenter(node, innerLeft, contentTop, innerW, contentH);
+    drawFlowNode(ctx, node, r.x, r.y, r.w, r.h, ink, R, nodeFontPx);
+  }
+
+  ctx.restore();
+}
